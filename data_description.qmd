@@ -39,19 +39,19 @@ Read in the data so the date and time readings are datetime objects and in Newfo
 The Gull Island and Great Island kestrels had long periods where their wind impellers were broken. We also typically turned the kestrels on before they were deployed and did not turn them off until several days after retrieval, so I will trim the data to remove the extra days, and replace the '0' wind speed with NA where the impellers were broken. 
 
 ```{r}
-baccalieu_weather <- read_csv("data/baccalieu_2025_weather.csv") %>% 
+baccalieu_weather <- read_csv("data/baccalieu_2025_weather.csv", show_col_types = FALSE) %>% 
   mutate(datetime = as_datetime(Time, format = "%m/%d/%Y %H:%M")) %>% 
   mutate(datetime = force_tz(datetime, tzone = "America/St_Johns")) %>% 
   filter(datetime > "2025-06-10" & datetime < "2025-10-21")
 
 
-gull_weather <- read_csv("data/gull_2025_weather.csv") %>% 
+gull_weather <- read_csv("data/gull_2025_weather.csv", show_col_types = FALSE) %>% 
   mutate(datetime = as_datetime(Time, format = "%m/%d/%Y %H:%M")) %>% 
   mutate(datetime = force_tz(datetime, tzone = "America/St_Johns")) %>% 
   filter(datetime > "2025-06-16" & datetime < "2025-10-29") %>% 
   mutate(`Wind Speed` = NA) ## This impeller never worked
 
-great_weather <- read_csv("data/great_2025_weather.csv") %>% 
+great_weather <- read_csv("data/great_2025_weather.csv", show_col_types = FALSE) %>% 
   mutate(datetime = as_datetime(Time, format = "%m/%d/%Y %H:%M")) %>% 
   mutate(datetime = force_tz(datetime, tzone = "America/St_Johns")) %>% 
   filter(datetime > "2025-06-23" & datetime < "2025-09-05") %>% 
@@ -64,9 +64,9 @@ Our light meters are Unihedron SQM-LU-DL (Sky Quality Meter Lens USB DataLogger)
 We had one light meter on Great Island (for Witless Bay) in 2025 and one on Baccalieu. Not much data trimming needed here; I've done some pre-processing of the data already, and the light meters have been much less finicky than the weather meters. 
 
 ```{r}
-baccalieu_light <- read_csv("data/baccalieu_light_20251023.csv")
+baccalieu_light <- read_csv("data/baccalieu_light_20251023.csv", show_col_types = FALSE)
 
-witless_light <- read_csv("data/witless_light_20250913.csv")
+witless_light <- read_csv("data/witless_light_20250913.csv", show_col_types = FALSE)
 ```
 
 One thing that may prove useful is filtering the light data for before/after (etc) nautical or astronomical twilight. The dataframes have a sun elevation variable; nautical night begins when the sun is 12 degrees below the horizon, and astronomical night begins when the sun is 18 degrees below the horizon.
