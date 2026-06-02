@@ -1,0 +1,17 @@
+variable,unit
+Time,yyyy-MM-dd hh:mm:ss
+Temp,Celsius
+Wet Bulb Temp.,Celsius
+Rel. Hum.,%
+Baro.,mb
+Altitude,Meters
+Station P.,mb
+Wind Speed,m/s
+Heat Index,Celsius
+Dew Point,Celsius
+Dens. Alt.,Meters
+Crosswind,m/s
+Headwind,m/s
+Mag. Dir.,Degrees
+True Dir.,Degrees
+Wind Chill,Celsius
