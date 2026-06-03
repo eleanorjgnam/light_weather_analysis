@@ -62,6 +62,8 @@ Read in the data so the date and time readings are datetime objects and in Newfo
 The Gull Island and Great Island kestrels had long periods where their wind impellers were broken. We also typically turned the kestrels on before they were deployed and did not turn them off until several days after retrieval, so I will trim the data to remove the extra days, and replace the '0' wind speed with NA where the impellers were broken. 
 
 ```{r}
+#| label: kestrel_data
+
 baccalieu_weather <- read_csv("data/baccalieu_2025_weather.csv", show_col_types = FALSE) %>% 
   mutate(datetime = as_datetime(Time, format = "%m/%d/%Y %H:%M")) %>% 
   mutate(datetime = force_tz(datetime, tzone = "America/St_Johns")) %>% 
@@ -132,18 +134,22 @@ Our light meters are Unihedron SQM-LU-DL (Sky Quality Meter Lens USB DataLogger)
 We had one light meter on Great Island (for Witless Bay) in 2025 and one on Baccalieu. Not much data trimming needed here; I've done some pre-processing of the data already, and the light meters have been much less finicky than the weather meters. 
 
 ```{r}
+#| label: light_data
+
 baccalieu_light <- read_csv("data/baccalieu_light_20251023.csv", show_col_types = FALSE)
 
 witless_light <- read_csv("data/witless_light_20250913.csv", show_col_types = FALSE)
 ```
 
-One thing that may prove useful is filtering the light data for before/after (etc) nautical or astronomical twilight. The dataframes have a sun elevation variable; nautical night begins when the sun is 12 degrees below the horizon, and astronomical night begins when the sun is 18 degrees below the horizon.
+One thing that may prove useful is filtering the light data for before/after (etc) nautical or astronomical twilight. The data frames have a sun elevation variable; nautical night begins when the sun is 12 degrees below the horizon, and astronomical night begins when the sun is 18 degrees below the horizon.
 
 # Sunrise and Sunset times
 
 For doing anything with light data, it can be useful to have a list of sunrise and sunset times. Our islands are not so far apart that these need to be calculated separately. The package "StreamMetabolism" has a very useful function for calculating sunrise and sunset as new columns using a date column. However, the function is slow and computationally heavy, so I usually make a list of sunrise and sunset times for our study period, then join that list to other dataframes as needed.
 
 ```{r}
+#| label: sunrise_and_sunset_times
+
 suntimes <- as.data.frame(seq(ymd("2025-06-01"), ymd("2025-10-31"), by = "1 day")) %>% 
   rename(date = 1)
 
@@ -197,6 +203,9 @@ The correlation is pretty tight, although the Gull Island kestrel usually record
 
 # St. John's International Airport Weather Data Wrangling
 
+No Barometric Pressure is recorded, only station pressure. i will include the column only for comparisons sake. 
+the elevation is taken from the same website as the data was taken from. 
+
 ```{r}
 file_list = list.files("SJIA_weather_data")
 
@@ -208,7 +217,21 @@ for(i in 2:length(file_list)) {
 airport_weather_data = bind_rows(airport_weather_data, temp_weather_data)
 }
 
-
+airport_weather_data = airport_weather_data %>%
+  mutate(datetime = as_datetime(Date.Time..LST., format = "%Y-%m-%d %H:%M")) %>%
+  mutate(datetime = force_tz(datetime, tzone = "America/St_Johns")) %>%
+  select(datetime, Temp...C., Stn.Press..kPa., Wind.Spd..km.h., Wind.Chill, Rel.Hum...., Dew.Point.Temp...C.) %>%
+  rename(
+    temperature = Temp...C.,
+    station_pressure = Stn.Press..kPa.,
+    wind_speed = Wind.Spd..km.h.,
+    wind_chill = Wind.Chill,
+    relative_humidity = Rel.Hum....,
+    dew_point = Dew.Point.Temp...C.
+  ) %>%
+  mutate(barometric_pressure = (station_pressure)*((1-(0.0065*140.50)/(temperature+273.15+(0.0065*140.50)))^-5.257)) %>%
+  relocate(barometric_pressure, .before = wind_speed)
 ```
 
 
+June 10th to October 28th
