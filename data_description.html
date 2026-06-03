@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.9.37">
+<meta name="generator" content="quarto-1.9.36">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
@@ -69,10 +69,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="data_description_files/libs/quarto-html/tippy.umd.min.js"></script>
 <script src="data_description_files/libs/quarto-html/anchor.min.js"></script>
 <link href="data_description_files/libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="data_description_files/libs/quarto-html/quarto-syntax-highlighting-7f8f88aac4f3542376d5c11b86a4c14d.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<link href="data_description_files/libs/quarto-html/quarto-syntax-highlighting-845c23b38eaddc0f92fda52bfe77a8c8.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="data_description_files/libs/bootstrap/bootstrap.min.js"></script>
 <link href="data_description_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="data_description_files/libs/bootstrap/bootstrap-efbb37e9afcc02144ebbc7afd12a776f.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="data_description_files/libs/bootstrap/bootstrap-138a6193a3bd40baf1e627da441a4734.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 
 
 </head>
@@ -108,26 +108,242 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
-<section id="quarto" class="level2">
-<h2 class="anchored" data-anchor-id="quarto">Quarto</h2>
-<p>Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <a href="https://quarto.org" class="uri">https://quarto.org</a>.</p>
+<section id="helper-functions" class="level1">
+<h1>Helper Functions</h1>
+<p>The <code>nightdater</code> function created rounds early-morning datetimes back to the previous night, creating a <em>night of</em> date. For example, a bird tagged at 23:00 on July 15 and a bird tagged at 3:00 on July 16 would both be considered tagged on the <em>night of</em> July 15</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>nightdater <span class="ot">&lt;-</span> <span class="cf">function</span> (colIn) {</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  nightdate <span class="ot">&lt;-</span> <span class="fu">as.Date</span>(<span class="fu">trunc</span>(colIn <span class="sc">-</span> <span class="fu">ifelse</span>(lubridate<span class="sc">::</span><span class="fu">hour</span>(colIn) <span class="sc">&lt;</span> <span class="dv">8</span>, <span class="dv">86400</span>, <span class="dv">0</span>), <span class="at">by =</span> <span class="st">"days"</span>))</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span>(nightdate)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
 </section>
-<section id="running-code" class="level2">
-<h2 class="anchored" data-anchor-id="running-code">Running Code</h2>
-<p>When you click the <strong>Render</strong> button a document will be generated that includes both content and the output of embedded code. You can embed code like this:</p>
+<section id="weather-data" class="level1">
+<h1>Weather Data</h1>
+<p>Our weather data from 2025 was collected via Kestrel 5500 weather meters. We had one on Gull Island, one on Great Island, and one on Baccalieu Island. We had persistent problems with the wind-measuring propellers breaking or getting jammed, so our record for wind data in particular is incomplete. One goal would be to compare the wind data that we do have to publicly available wind data, to see if the public data is an adequate replacement.</p>
+<p>Great Island kestrel coordinates: N47 11.26, W59 49.03 (same as light meter)</p>
+<p>Gull Island kestrel coordinates: N47 15.6, W52 46.54</p>
+<p>Baccalieu Island kestrel coordinates: N48 -7.32, W52 47.89 (same as light meter)</p>
+<section id="standardization-of-units-for-comparison." class="level2">
+<h2 class="anchored" data-anchor-id="standardization-of-units-for-comparison.">Standardization of units for comparison.</h2>
+<p>In order for proper comparison to occur some values will have to be converted to different units due to differences in standards established by the lab for the Kestrel 5500 and the St.&nbsp;John’s International Airport. From here on out, the standard is as follows.</p>
+<table class="caption-top table">
+<caption>Standardized Units of Measurements</caption>
+<colgroup>
+<col style="width: 75%">
+<col style="width: 25%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Variable</th>
+<th>Unit</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>datetime</td>
+<td>YYYY-MM-DD hh:mm:ss</td>
+</tr>
+<tr class="even">
+<td>temperature</td>
+<td>°C</td>
+</tr>
+<tr class="odd">
+<td>station_pressure</td>
+<td>kPa</td>
+</tr>
+<tr class="even">
+<td>barometric_pressure</td>
+<td>kPa</td>
+</tr>
+<tr class="odd">
+<td>wind_speed</td>
+<td>km/h</td>
+</tr>
+<tr class="even">
+<td>wind_chill</td>
+<td>°C</td>
+</tr>
+<tr class="odd">
+<td>relative_humidity</td>
+<td>%</td>
+</tr>
+<tr class="even">
+<td>dew_point</td>
+<td>°C</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="read-in-kestrel-data" class="level2">
+<h2 class="anchored" data-anchor-id="read-in-kestrel-data">Read in Kestrel data</h2>
+<p>Read in the data so the date and time readings are datetime objects and in Newfoundland time.</p>
+<p>The Gull Island and Great Island kestrels had long periods where their wind impellers were broken. We also typically turned the kestrels on before they were deployed and did not turn them off until several days after retrieval, so I will trim the data to remove the extra days, and replace the ‘0’ wind speed with NA where the impellers were broken.</p>
 <div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="dv">1</span> <span class="sc">+</span> <span class="dv">1</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>[1] 2</code></pre>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>baccalieu_weather <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">"data/baccalieu_2025_weather.csv"</span>, <span class="at">show_col_types =</span> <span class="cn">FALSE</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">datetime =</span> <span class="fu">as_datetime</span>(Time, <span class="at">format =</span> <span class="st">"%m/%d/%Y %H:%M"</span>)) <span class="sc">%&gt;%</span> </span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">datetime =</span> <span class="fu">force_tz</span>(datetime, <span class="at">tzone =</span> <span class="st">"America/St_Johns"</span>)) <span class="sc">%&gt;%</span> </span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(datetime <span class="sc">&gt;</span> <span class="st">"2025-06-10"</span> <span class="sc">&amp;</span> datetime <span class="sc">&lt;</span> <span class="st">"2025-10-21"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(<span class="st">"datetime"</span>, <span class="st">"Temp"</span>, <span class="st">"Station P."</span>, <span class="st">"Baro."</span>, <span class="st">"Wind Speed"</span>, <span class="st">"Wind Chill"</span>, <span class="st">"Rel. Hum."</span>, <span class="st">"Dew Point"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rename</span>(</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    <span class="at">temperature =</span> <span class="st">"Temp"</span>,</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">station_pressure =</span> <span class="st">"Station P."</span>,</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">barometric_pressure =</span> <span class="st">"Baro."</span>,</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>    <span class="at">wind_speed =</span> <span class="st">"Wind Speed"</span>,</span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>    <span class="at">wind_chill =</span> <span class="st">"Wind Chill"</span>,</span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>    <span class="at">relative_humidity =</span> <span class="st">"Rel. Hum."</span>,</span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>    <span class="at">dew_point =</span> <span class="st">"Dew Point"</span></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>    <span class="at">station_pressure =</span> station_pressure<span class="sc">/</span><span class="dv">10</span>,</span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>    <span class="at">barometric_pressure =</span> barometric_pressure<span class="sc">/</span><span class="dv">10</span>,</span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>    <span class="at">wind_speed =</span> wind_speed<span class="sc">*</span><span class="fl">3.6</span></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a>gull_weather <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">"data/gull_2025_weather.csv"</span>, <span class="at">show_col_types =</span> <span class="cn">FALSE</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">datetime =</span> <span class="fu">as_datetime</span>(Time, <span class="at">format =</span> <span class="st">"%m/%d/%Y %H:%M"</span>)) <span class="sc">%&gt;%</span> </span>
+<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">datetime =</span> <span class="fu">force_tz</span>(datetime, <span class="at">tzone =</span> <span class="st">"America/St_Johns"</span>)) <span class="sc">%&gt;%</span> </span>
+<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(datetime <span class="sc">&gt;</span> <span class="st">"2025-06-16"</span> <span class="sc">&amp;</span> datetime <span class="sc">&lt;</span> <span class="st">"2025-10-29"</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb2-26"><a href="#cb2-26" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="st">`</span><span class="at">Wind Speed</span><span class="st">`</span> <span class="ot">=</span> <span class="cn">NA</span>) <span class="sc">%&gt;%</span> <span class="do">## This impeller never worked</span></span>
+<span id="cb2-27"><a href="#cb2-27" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(<span class="st">"datetime"</span>, <span class="st">"Temp"</span>, <span class="st">"Station P."</span>, <span class="st">"Baro."</span>, <span class="st">"Wind Speed"</span>, <span class="st">"Wind Chill"</span>, <span class="st">"Rel. Hum."</span>, <span class="st">"Dew Point"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb2-28"><a href="#cb2-28" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rename</span>(</span>
+<span id="cb2-29"><a href="#cb2-29" aria-hidden="true" tabindex="-1"></a>    <span class="at">temperature =</span> <span class="st">"Temp"</span>,</span>
+<span id="cb2-30"><a href="#cb2-30" aria-hidden="true" tabindex="-1"></a>    <span class="at">station_pressure =</span> <span class="st">"Station P."</span>,</span>
+<span id="cb2-31"><a href="#cb2-31" aria-hidden="true" tabindex="-1"></a>    <span class="at">barometric_pressure =</span> <span class="st">"Baro."</span>,</span>
+<span id="cb2-32"><a href="#cb2-32" aria-hidden="true" tabindex="-1"></a>    <span class="at">wind_speed =</span> <span class="st">"Wind Speed"</span>,</span>
+<span id="cb2-33"><a href="#cb2-33" aria-hidden="true" tabindex="-1"></a>    <span class="at">wind_chill =</span> <span class="st">"Wind Chill"</span>,</span>
+<span id="cb2-34"><a href="#cb2-34" aria-hidden="true" tabindex="-1"></a>    <span class="at">relative_humidity =</span> <span class="st">"Rel. Hum."</span>,</span>
+<span id="cb2-35"><a href="#cb2-35" aria-hidden="true" tabindex="-1"></a>    <span class="at">dew_point =</span> <span class="st">"Dew Point"</span></span>
+<span id="cb2-36"><a href="#cb2-36" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span></span>
+<span id="cb2-37"><a href="#cb2-37" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb2-38"><a href="#cb2-38" aria-hidden="true" tabindex="-1"></a>    <span class="at">station_pressure =</span> station_pressure<span class="sc">/</span><span class="dv">10</span>,</span>
+<span id="cb2-39"><a href="#cb2-39" aria-hidden="true" tabindex="-1"></a>    <span class="at">barometric_pressure =</span> barometric_pressure<span class="sc">/</span><span class="dv">10</span>,</span>
+<span id="cb2-40"><a href="#cb2-40" aria-hidden="true" tabindex="-1"></a>    <span class="at">wind_speed =</span> wind_speed<span class="sc">*</span><span class="fl">3.6</span></span>
+<span id="cb2-41"><a href="#cb2-41" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb2-42"><a href="#cb2-42" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-43"><a href="#cb2-43" aria-hidden="true" tabindex="-1"></a>great_weather <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">"data/great_2025_weather.csv"</span>, <span class="at">show_col_types =</span> <span class="cn">FALSE</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb2-44"><a href="#cb2-44" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">datetime =</span> <span class="fu">as_datetime</span>(Time, <span class="at">format =</span> <span class="st">"%m/%d/%Y %H:%M"</span>)) <span class="sc">%&gt;%</span> </span>
+<span id="cb2-45"><a href="#cb2-45" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">datetime =</span> <span class="fu">force_tz</span>(datetime, <span class="at">tzone =</span> <span class="st">"America/St_Johns"</span>)) <span class="sc">%&gt;%</span> </span>
+<span id="cb2-46"><a href="#cb2-46" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(datetime <span class="sc">&gt;</span> <span class="st">"2025-06-23"</span> <span class="sc">&amp;</span> datetime <span class="sc">&lt;</span> <span class="st">"2025-09-05"</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb2-47"><a href="#cb2-47" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="st">`</span><span class="at">Wind Speed</span><span class="st">`</span> <span class="ot">=</span> <span class="fu">if_else</span>(datetime <span class="sc">&gt;</span> <span class="st">"2025-07-19"</span>, <span class="cn">NA</span>, <span class="st">`</span><span class="at">Wind Speed</span><span class="st">`</span>)) <span class="sc">%&gt;%</span></span>
+<span id="cb2-48"><a href="#cb2-48" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(<span class="st">"datetime"</span>, <span class="st">"Temp"</span>, <span class="st">"Station P."</span>, <span class="st">"Baro."</span>, <span class="st">"Wind Speed"</span>, <span class="st">"Wind Chill"</span>, <span class="st">"Rel. Hum."</span>, <span class="st">"Dew Point"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb2-49"><a href="#cb2-49" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rename</span>(</span>
+<span id="cb2-50"><a href="#cb2-50" aria-hidden="true" tabindex="-1"></a>    <span class="at">temperature =</span> <span class="st">"Temp"</span>,</span>
+<span id="cb2-51"><a href="#cb2-51" aria-hidden="true" tabindex="-1"></a>    <span class="at">station_pressure =</span> <span class="st">"Station P."</span>,</span>
+<span id="cb2-52"><a href="#cb2-52" aria-hidden="true" tabindex="-1"></a>    <span class="at">barometric_pressure =</span> <span class="st">"Baro."</span>,</span>
+<span id="cb2-53"><a href="#cb2-53" aria-hidden="true" tabindex="-1"></a>    <span class="at">wind_speed =</span> <span class="st">"Wind Speed"</span>,</span>
+<span id="cb2-54"><a href="#cb2-54" aria-hidden="true" tabindex="-1"></a>    <span class="at">wind_chill =</span> <span class="st">"Wind Chill"</span>,</span>
+<span id="cb2-55"><a href="#cb2-55" aria-hidden="true" tabindex="-1"></a>    <span class="at">relative_humidity =</span> <span class="st">"Rel. Hum."</span>,</span>
+<span id="cb2-56"><a href="#cb2-56" aria-hidden="true" tabindex="-1"></a>    <span class="at">dew_point =</span> <span class="st">"Dew Point"</span></span>
+<span id="cb2-57"><a href="#cb2-57" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span></span>
+<span id="cb2-58"><a href="#cb2-58" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb2-59"><a href="#cb2-59" aria-hidden="true" tabindex="-1"></a>    <span class="at">station_pressure =</span> station_pressure<span class="sc">/</span><span class="dv">10</span>,</span>
+<span id="cb2-60"><a href="#cb2-60" aria-hidden="true" tabindex="-1"></a>    <span class="at">barometric_pressure =</span> barometric_pressure<span class="sc">/</span><span class="dv">10</span>,</span>
+<span id="cb2-61"><a href="#cb2-61" aria-hidden="true" tabindex="-1"></a>    <span class="at">wind_speed =</span> wind_speed<span class="sc">*</span><span class="fl">3.6</span></span>
+<span id="cb2-62"><a href="#cb2-62" aria-hidden="true" tabindex="-1"></a>  )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
-</div>
-<p>You can add options to executable code like this</p>
+</section>
+<section id="light-data" class="level2">
+<h2 class="anchored" data-anchor-id="light-data">Light Data</h2>
+<p>Our light meters are Unihedron SQM-LU-DL (Sky Quality Meter Lens USB DataLogger) light meters, made for measuring nighttime light pollution. They measure light in Magnitudes per Arcsecond Squared, which is an astronomical measurement; magnitudes relates to star brightness (the sun’s magnitude is -27, Sirius has a magnitude of -1, Polaris has a magnitude of 2). Arc-seconds relate to how the night sky is divided into minutes and seconds; a square arc-second is a one-second by one-second area of the sky. If you could divide the light of a star with a magnitude of 20 (very dim; Pluto’s largest moon has a magnitude of 16) evenly over one square arcsecond, the MPSAS reading would be 20. The scale is negative, with higher values being darker. A sky with an MSAS reading of 5 (the cutoff for our meters) would be around sunset. Our night skies on dark nights are typically around 21 MPSAS, and the darkest night skies on earth read around 25. Each increase of 1 MPSAS means 2.5 times less light is coming from the sky; a sky measured at 5 MPSAS is 100 times brighter than a sky measured at 10 MPSAS.</p>
+<p>We had one light meter on Great Island (for Witless Bay) in 2025 and one on Baccalieu. Not much data trimming needed here; I’ve done some pre-processing of the data already, and the light meters have been much less finicky than the weather meters.</p>
 <div class="cell">
-<div class="cell-output cell-output-stdout">
-<pre><code>[1] 4</code></pre>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>baccalieu_light <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">"data/baccalieu_light_20251023.csv"</span>, <span class="at">show_col_types =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>witless_light <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">"data/witless_light_20250913.csv"</span>, <span class="at">show_col_types =</span> <span class="cn">FALSE</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>One thing that may prove useful is filtering the light data for before/after (etc) nautical or astronomical twilight. The dataframes have a sun elevation variable; nautical night begins when the sun is 12 degrees below the horizon, and astronomical night begins when the sun is 18 degrees below the horizon.</p>
+</section>
+<section id="sunrise-and-sunset-times" class="level2">
+<h2 class="anchored" data-anchor-id="sunrise-and-sunset-times">Sunrise and Sunset times</h2>
+<p>For doing anything with light data, it can be useful to have a list of sunrise and sunset times. Our islands are not so far apart that these need to be calculated separately. The package “StreamMetabolism” has a very useful function for calculating sunrise and sunset as new columns using a date column. However, the function is slow and computationally heavy, so I usually make a list of sunrise and sunset times for our study period, then join that list to other dataframes as needed.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>suntimes <span class="ot">&lt;-</span> <span class="fu">as.data.frame</span>(<span class="fu">seq</span>(<span class="fu">ymd</span>(<span class="st">"2025-06-01"</span>), <span class="fu">ymd</span>(<span class="st">"2025-10-31"</span>), <span class="at">by =</span> <span class="st">"1 day"</span>)) <span class="sc">%&gt;%</span> </span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rename</span>(<span class="at">date =</span> <span class="dv">1</span>)</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>suntimes <span class="ot">&lt;-</span> suntimes <span class="sc">%&gt;%</span> </span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">lat =</span> <span class="fl">47.58</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">lon =</span> <span class="sc">-</span><span class="fl">52.71</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rowwise</span>() <span class="sc">%&gt;%</span> </span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="fu">sunrise.set</span>(<span class="at">lat =</span> lat, <span class="at">long =</span> lon, <span class="at">date =</span> date <span class="sc">+</span> lubridate<span class="sc">::</span><span class="fu">days</span>(<span class="dv">1</span>), <span class="at">timezone =</span> <span class="st">"America/St_Johns"</span>)) <span class="do">## Adding one day is necessary to get sunset for the given date rather than the night before</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+</section>
+<section id="next-steps" class="level2">
+<h2 class="anchored" data-anchor-id="next-steps">Next Steps</h2>
+<p>For next steps, feel free to do some basic data exploration/visualization of the weather data that we do have. Then I would start looking for useful publicly available weather data, and get those data into R and into useful formats for comparison with our data.</p>
+</section>
+<section id="example-how-well-does-temperature-correlate-among-the-islands" class="level2">
+<h2 class="anchored" data-anchor-id="example-how-well-does-temperature-correlate-among-the-islands">Example: How well does temperature correlate among the islands?</h2>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>great_temp <span class="ot">&lt;-</span> great_weather <span class="sc">%&gt;%</span> </span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">island =</span> <span class="st">"Great"</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(island, datetime, temperature)</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>gull_temp <span class="ot">&lt;-</span> gull_weather <span class="sc">%&gt;%</span> </span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">island =</span> <span class="st">"Gull"</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(island, datetime, temperature)</span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>bac_temp <span class="ot">&lt;-</span> baccalieu_weather <span class="sc">%&gt;%</span> </span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">island =</span> <span class="st">"Baccalieu"</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(island, datetime, temperature)</span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>temp <span class="ot">&lt;-</span> <span class="fu">rbind</span>(great_temp, gull_temp, bac_temp)</span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a>temp <span class="sc">%&gt;%</span> </span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">time_bin =</span> <span class="fu">round_date</span>(datetime, <span class="st">"1 day"</span>)) <span class="sc">%&gt;%</span> </span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(time_bin, island) <span class="sc">%&gt;%</span> </span>
+<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarize</span>(<span class="at">mean_temp =</span> <span class="fu">mean</span>(temperature)) <span class="sc">%&gt;%</span> </span>
+<span id="cb5-19"><a href="#cb5-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(island <span class="sc">%in%</span> <span class="fu">c</span>(<span class="st">"Great"</span>, <span class="st">"Gull"</span>)) <span class="sc">%&gt;%</span> </span>
+<span id="cb5-20"><a href="#cb5-20" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(time_bin) <span class="sc">%&gt;%</span></span>
+<span id="cb5-21"><a href="#cb5-21" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="fu">n</span>() <span class="sc">==</span> <span class="dv">2</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb5-22"><a href="#cb5-22" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_wider</span>(<span class="at">names_from =</span> island, <span class="at">values_from =</span> mean_temp) <span class="sc">%&gt;%</span> </span>
+<span id="cb5-23"><a href="#cb5-23" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> Great, <span class="at">y =</span> Gull, <span class="at">color =</span> time_bin)) <span class="sc">+</span></span>
+<span id="cb5-24"><a href="#cb5-24" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>() <span class="sc">+</span></span>
+<span id="cb5-25"><a href="#cb5-25" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_smooth</span>(<span class="at">method =</span> <span class="st">"lm"</span>) <span class="sc">+</span></span>
+<span id="cb5-26"><a href="#cb5-26" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ylab</span>(<span class="st">"Daily Average Temp on Gull"</span>) <span class="sc">+</span></span>
+<span id="cb5-27"><a href="#cb5-27" aria-hidden="true" tabindex="-1"></a>  <span class="fu">xlab</span>(<span class="st">"Daily Average Temp on Great"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>`summarise()` has regrouped the output.
+`geom_smooth()` using formula = 'y ~ x'
+ℹ Summaries were computed grouped by time_bin and island.
+ℹ Output is grouped by time_bin.
+ℹ Use `summarise(.groups = "drop_last")` to silence this message.
+ℹ Use `summarise(.by = c(time_bin, island))` for per-operation grouping
+  (`?dplyr::dplyr_by`) instead.</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: The following aesthetics were dropped during statistical transformation:
+colour.
+ℹ This can happen when ggplot fails to infer the correct grouping structure in
+  the data.
+ℹ Did you forget to specify a `group` aesthetic or to convert a numerical
+  variable into a factor?</code></pre>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="data_description_files/figure-html/unnamed-chunk-4-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
 </div>
 </div>
-<p>The <code>echo: false</code> option disables the printing of code (only output is displayed).</p>
+</div>
+<p>The correlation is pretty tight, although the Gull Island kestrel usually recorded warmer temperatures (it was much more protected and further inland.).</p>
+</section>
+<section id="st.-johns-international-airport-weather-data-wrangling" class="level2">
+<h2 class="anchored" data-anchor-id="st.-johns-international-airport-weather-data-wrangling">St.&nbsp;John’s International Airport Weather Data Wrangling</h2>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>file_list <span class="ot">=</span> <span class="fu">list.files</span>(<span class="st">"SJIA_weather_data"</span>)</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>airport_weather_data <span class="ot">=</span> <span class="fu">as_tibble</span>(<span class="fu">read.csv</span>(<span class="fu">paste0</span>(<span class="st">"SJIA_weather_data/"</span>, file_list[<span class="dv">1</span>])))</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span>(i <span class="cf">in</span> <span class="dv">2</span><span class="sc">:</span><span class="fu">length</span>(file_list)) {</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>  temp_weather_data <span class="ot">=</span> <span class="fu">as_tibble</span>(<span class="fu">read.csv</span>(<span class="fu">paste0</span>(<span class="st">"SJIA_weather_data/"</span>, file_list[i])))</span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>airport_weather_data <span class="ot">=</span> <span class="fu">bind_rows</span>(airport_weather_data, temp_weather_data)</span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+</section>
 </section>
 
 </main>
