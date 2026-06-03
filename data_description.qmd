@@ -127,5 +127,18 @@ The correlation is pretty tight, although the Gull Island kestrel usually record
 
 
 
+## St. John's International Airport Weather Data Wrangling
+
+```{r}
+file_list = list.files("SJIA_weather_data")
+
+airport_weather_data = as_tibble(read.csv(paste0("SJIA_weather_data/", file_list[1])))
+
+for(i in 2:length(file_list)) {
+  temp_weather_data = as_tibble(read.csv(paste0("SJIA_weather_data/", file_list[i])))
+  
+airport_weather_data = bind_rows(airport_weather_data, temp_weather_data)
+}
+```
 
 
