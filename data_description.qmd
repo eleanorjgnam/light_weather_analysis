@@ -235,3 +235,30 @@ airport_weather_data = airport_weather_data %>%
 
 
 June 10th to October 28th
+
+```{r}
+airport_weather_data = airport_weather_data %>%
+  rename_with(~paste0("sjia_", .x), .cols = -datetime)
+
+baccalieu_weather = baccalieu_weather %>%
+  rename_with(~paste0("baccalieu_", .x), .cols = -datetime)
+
+gull_weather = gull_weather %>%
+  rename_with(~paste0("gull_", .x), .cols = -datetime)
+
+great_weather = great_weather %>%
+  rename_with(~paste0("great_", .x), .cols = -datetime)
+```
+
+
+```{r}
+master_weather_data = as_tibble(seq(ymd_hm("2025-06-10 00:00", tz = "America/St_Johns"), ymd_hm("2025-10-29 5:00", tz = "America/St_Johns"), by = "1 hour")) %>%
+  rename(datetime = value)
+```
+
+
+```{r}
+master_weather_data = master_weather_data %>%
+  left_join(airport_weather_data, by = c("datetime")) 
+```
+
