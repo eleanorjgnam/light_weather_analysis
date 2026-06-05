@@ -334,6 +334,7 @@ colour.
 <section id="st.-johns-international-airport-weather-data-wrangling" class="level1">
 <h1>St.&nbsp;John’s International Airport Weather Data Wrangling</h1>
 <p>No Barometric Pressure is recorded, only station pressure. i will include the column only for comparisons sake. the elevation is taken from the same website as the data was taken from.</p>
+<p>because the airport data is taken every hour on the half hour, the time will be rounded to match the data collected from the kestrel 5500 stations.</p>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>file_list <span class="ot">=</span> <span class="fu">list.files</span>(<span class="st">"SJIA_weather_data"</span>)</span>
 <span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a></span>
@@ -348,19 +349,554 @@ colour.
 <span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a>airport_weather_data <span class="ot">=</span> airport_weather_data <span class="sc">%&gt;%</span></span>
 <span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">datetime =</span> <span class="fu">as_datetime</span>(Date.Time..LST., <span class="at">format =</span> <span class="st">"%Y-%m-%d %H:%M"</span>)) <span class="sc">%&gt;%</span></span>
 <span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">datetime =</span> <span class="fu">force_tz</span>(datetime, <span class="at">tzone =</span> <span class="st">"America/St_Johns"</span>)) <span class="sc">%&gt;%</span></span>
-<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(datetime, Temp...C., Stn.Press..kPa., Wind.Spd..km.h., Wind.Chill, Rel.Hum...., Dew.Point.Temp...C.) <span class="sc">%&gt;%</span></span>
-<span id="cb8-15"><a href="#cb8-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rename</span>(</span>
-<span id="cb8-16"><a href="#cb8-16" aria-hidden="true" tabindex="-1"></a>    <span class="at">temperature =</span> Temp...C.,</span>
-<span id="cb8-17"><a href="#cb8-17" aria-hidden="true" tabindex="-1"></a>    <span class="at">station_pressure =</span> Stn.Press..kPa.,</span>
-<span id="cb8-18"><a href="#cb8-18" aria-hidden="true" tabindex="-1"></a>    <span class="at">wind_speed =</span> Wind.Spd..km.h.,</span>
-<span id="cb8-19"><a href="#cb8-19" aria-hidden="true" tabindex="-1"></a>    <span class="at">wind_chill =</span> Wind.Chill,</span>
-<span id="cb8-20"><a href="#cb8-20" aria-hidden="true" tabindex="-1"></a>    <span class="at">relative_humidity =</span> Rel.Hum....,</span>
-<span id="cb8-21"><a href="#cb8-21" aria-hidden="true" tabindex="-1"></a>    <span class="at">dew_point =</span> Dew.Point.Temp...C.</span>
-<span id="cb8-22"><a href="#cb8-22" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span></span>
-<span id="cb8-23"><a href="#cb8-23" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">barometric_pressure =</span> (station_pressure)<span class="sc">*</span>((<span class="dv">1</span><span class="sc">-</span>(<span class="fl">0.0065</span><span class="sc">*</span><span class="fl">140.50</span>)<span class="sc">/</span>(temperature<span class="fl">+273.15</span><span class="sc">+</span>(<span class="fl">0.0065</span><span class="sc">*</span><span class="fl">140.50</span>)))<span class="sc">^-</span><span class="fl">5.257</span>)) <span class="sc">%&gt;%</span></span>
-<span id="cb8-24"><a href="#cb8-24" aria-hidden="true" tabindex="-1"></a>  <span class="fu">relocate</span>(barometric_pressure, <span class="at">.before =</span> wind_speed)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">datetime =</span> <span class="fu">round_date</span>(datetime, <span class="st">"hour"</span>)) <span class="sc">%&gt;%</span></span>
+<span id="cb8-15"><a href="#cb8-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(datetime, Temp...C., Stn.Press..kPa., Wind.Spd..km.h., Wind.Chill, Rel.Hum...., Dew.Point.Temp...C.) <span class="sc">%&gt;%</span></span>
+<span id="cb8-16"><a href="#cb8-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rename</span>(</span>
+<span id="cb8-17"><a href="#cb8-17" aria-hidden="true" tabindex="-1"></a>    <span class="at">temperature =</span> Temp...C.,</span>
+<span id="cb8-18"><a href="#cb8-18" aria-hidden="true" tabindex="-1"></a>    <span class="at">station_pressure =</span> Stn.Press..kPa.,</span>
+<span id="cb8-19"><a href="#cb8-19" aria-hidden="true" tabindex="-1"></a>    <span class="at">wind_speed =</span> Wind.Spd..km.h.,</span>
+<span id="cb8-20"><a href="#cb8-20" aria-hidden="true" tabindex="-1"></a>    <span class="at">wind_chill =</span> Wind.Chill,</span>
+<span id="cb8-21"><a href="#cb8-21" aria-hidden="true" tabindex="-1"></a>    <span class="at">relative_humidity =</span> Rel.Hum....,</span>
+<span id="cb8-22"><a href="#cb8-22" aria-hidden="true" tabindex="-1"></a>    <span class="at">dew_point =</span> Dew.Point.Temp...C.</span>
+<span id="cb8-23"><a href="#cb8-23" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span></span>
+<span id="cb8-24"><a href="#cb8-24" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">barometric_pressure =</span> (station_pressure)<span class="sc">*</span>((<span class="dv">1</span><span class="sc">-</span>(<span class="fl">0.0065</span><span class="sc">*</span><span class="fl">140.50</span>)<span class="sc">/</span>(temperature<span class="fl">+273.15</span><span class="sc">+</span>(<span class="fl">0.0065</span><span class="sc">*</span><span class="fl">140.50</span>)))<span class="sc">^-</span><span class="fl">5.257</span>)) <span class="sc">%&gt;%</span></span>
+<span id="cb8-25"><a href="#cb8-25" aria-hidden="true" tabindex="-1"></a>  <span class="fu">relocate</span>(barometric_pressure, <span class="at">.before =</span> wind_speed) <span class="sc">%&gt;%</span></span>
+<span id="cb8-26"><a href="#cb8-26" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(datetime <span class="sc">&gt;=</span> <span class="st">"2025-06-10"</span> <span class="sc">&amp;</span> datetime <span class="sc">&lt;=</span> <span class="st">"2025-10-29"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>June 10th to October 28th</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>airport_weather_data <span class="ot">=</span> airport_weather_data <span class="sc">%&gt;%</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">weather_station_location =</span> <span class="st">"St. John's International Airport"</span>)</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>baccalieu_weather <span class="ot">=</span> baccalieu_weather <span class="sc">%&gt;%</span></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">weather_station_location =</span> <span class="st">"Baccalieu Island"</span>)</span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>gull_weather <span class="ot">=</span> gull_weather <span class="sc">%&gt;%</span></span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">weather_station_location =</span> <span class="st">"Gull Island"</span>)</span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a>great_weather <span class="ot">=</span> great_weather <span class="sc">%&gt;%</span></span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">weather_station_location =</span> <span class="st">"Great Island"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>master_weather_data <span class="ot">=</span> <span class="fu">bind_rows</span>(airport_weather_data, baccalieu_weather, gull_weather, great_weather)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>lower_function <span class="ot">=</span> <span class="cf">function</span>(data, mapping) {</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="at">data =</span> data, <span class="at">mapping =</span> mapping) <span class="sc">+</span></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_point</span>(<span class="at">alpha =</span> <span class="fl">0.5</span>) <span class="sc">+</span></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_smooth</span>(<span class="at">method =</span> <span class="st">"lm"</span>) <span class="sc">+</span></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>    <span class="fu">scale_x_continuous</span>() <span class="sc">+</span></span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>    <span class="fu">scale_y_continuous</span>()</span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>diag_function <span class="ot">=</span> <span class="cf">function</span>(data, mapping) {</span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="at">data =</span> data, <span class="at">mapping =</span> mapping) <span class="sc">+</span></span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_density</span>() <span class="sc">+</span></span>
+<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a>    <span class="fu">scale_x_continuous</span>()</span>
+<span id="cb11-13"><a href="#cb11-13" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb11-14"><a href="#cb11-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-15"><a href="#cb11-15" aria-hidden="true" tabindex="-1"></a>temp_time_binned <span class="ot">=</span> master_weather_data <span class="sc">%&gt;%</span></span>
+<span id="cb11-16"><a href="#cb11-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(datetime, temperature, weather_station_location) <span class="sc">%&gt;%</span></span>
+<span id="cb11-17"><a href="#cb11-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">time_bin =</span> <span class="fu">floor_date</span>(datetime, <span class="at">unit =</span> <span class="st">"day"</span>)) <span class="sc">%&gt;%</span></span>
+<span id="cb11-18"><a href="#cb11-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(time_bin, weather_station_location) <span class="sc">%&gt;%</span></span>
+<span id="cb11-19"><a href="#cb11-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">mean_daily_temp =</span> <span class="fu">mean</span>(temperature), <span class="at">.groups =</span> <span class="st">"drop_last"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb11-20"><a href="#cb11-20" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_wider</span>(<span class="at">names_from =</span> weather_station_location, <span class="at">values_from =</span> mean_daily_temp)</span>
+<span id="cb11-21"><a href="#cb11-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-22"><a href="#cb11-22" aria-hidden="true" tabindex="-1"></a><span class="fu">ggpairs</span>(temp_time_binned, <span class="at">columns =</span> <span class="dv">2</span><span class="sc">:</span><span class="dv">5</span>, </span>
+<span id="cb11-23"><a href="#cb11-23" aria-hidden="true" tabindex="-1"></a>        <span class="at">title =</span> <span class="st">"Correlation Matrix of Daily Mean Temperatures </span><span class="sc">\n</span><span class="st">at Different Locations of Weather Station"</span>,</span>
+<span id="cb11-24"><a href="#cb11-24" aria-hidden="true" tabindex="-1"></a>          <span class="at">lower =</span> <span class="fu">list</span>(<span class="at">continuous =</span> lower_function),</span>
+<span id="cb11-25"><a href="#cb11-25" aria-hidden="true" tabindex="-1"></a>          <span class="at">diag =</span> <span class="fu">list</span>(<span class="at">continuous =</span> diag_function))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="data_description_files/figure-html/unnamed-chunk-5-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>barometric_pressure_time_binned <span class="ot">=</span> master_weather_data <span class="sc">%&gt;%</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(datetime, barometric_pressure, weather_station_location) <span class="sc">%&gt;%</span></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">time_bin =</span> <span class="fu">floor_date</span>(datetime, <span class="at">unit =</span> <span class="st">"day"</span>)) <span class="sc">%&gt;%</span></span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(time_bin, weather_station_location) <span class="sc">%&gt;%</span></span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">mean_daily_barometric_pressure =</span> <span class="fu">mean</span>(barometric_pressure), <span class="at">.groups =</span> <span class="st">"drop_last"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_wider</span>(<span class="at">names_from =</span> weather_station_location, <span class="at">values_from =</span> mean_daily_barometric_pressure)</span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a><span class="fu">ggpairs</span>(barometric_pressure_time_binned, <span class="at">columns =</span> <span class="dv">2</span><span class="sc">:</span><span class="dv">5</span>, <span class="at">lower =</span> <span class="fu">list</span>(<span class="at">continuous =</span> lower_function), <span class="at">diag =</span> <span class="fu">list</span>(<span class="at">continuous =</span> diag_function))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 9 rows containing non-finite outside the scale range
+(`stat_density()`).</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 13 rows containing missing values</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 15 rows containing missing values</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 68 rows containing missing values</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>`geom_smooth()` using formula = 'y ~ x'</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 13 rows containing non-finite outside the scale range
+(`stat_smooth()`).</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 13 rows containing missing values or values outside the scale range
+(`geom_point()`).</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 4 rows containing non-finite outside the scale range
+(`stat_density()`).</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 11 rows containing missing values</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 72 rows containing missing values</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>`geom_smooth()` using formula = 'y ~ x'</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 15 rows containing non-finite outside the scale range
+(`stat_smooth()`).</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 15 rows containing missing values or values outside the scale range
+(`geom_point()`).</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>`geom_smooth()` using formula = 'y ~ x'</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 11 rows containing non-finite outside the scale range
+(`stat_smooth()`).</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 11 rows containing missing values or values outside the scale range
+(`geom_point()`).</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 7 rows containing non-finite outside the scale range
+(`stat_density()`).</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 68 rows containing missing values</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>`geom_smooth()` using formula = 'y ~ x'</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 68 rows containing non-finite outside the scale range
+(`stat_smooth()`).</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 68 rows containing missing values or values outside the scale range
+(`geom_point()`).</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>`geom_smooth()` using formula = 'y ~ x'</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 72 rows containing non-finite outside the scale range
+(`stat_smooth()`).</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 72 rows containing missing values or values outside the scale range
+(`geom_point()`).</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>`geom_smooth()` using formula = 'y ~ x'</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 68 rows containing non-finite outside the scale range
+(`stat_smooth()`).</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 68 rows containing missing values or values outside the scale range
+(`geom_point()`).</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 68 rows containing non-finite outside the scale range
+(`stat_density()`).</code></pre>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="data_description_files/figure-html/unnamed-chunk-6-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>gull island has no wind data so it is left out of this exploratory visualization. but what is interesting is that despite how strongly correlated all other common measures are, wind speed appears to not be reliable between stations… more data needed to confirm, could depend on location and direction of the impeller of the kestrel, could actually be this metric is non transferrable.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb41"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb41-1"><a href="#cb41-1" aria-hidden="true" tabindex="-1"></a>wind_speed_time_binned <span class="ot">=</span> master_weather_data <span class="sc">%&gt;%</span></span>
+<span id="cb41-2"><a href="#cb41-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(datetime, wind_speed, weather_station_location) <span class="sc">%&gt;%</span></span>
+<span id="cb41-3"><a href="#cb41-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">time_bin =</span> <span class="fu">floor_date</span>(datetime, <span class="at">unit =</span> <span class="st">"day"</span>)) <span class="sc">%&gt;%</span></span>
+<span id="cb41-4"><a href="#cb41-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(time_bin, weather_station_location) <span class="sc">%&gt;%</span></span>
+<span id="cb41-5"><a href="#cb41-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">mean_daily_wind_speed =</span> <span class="fu">mean</span>(wind_speed), <span class="at">.groups =</span> <span class="st">"drop_last"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb41-6"><a href="#cb41-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_wider</span>(<span class="at">names_from =</span> weather_station_location, <span class="at">values_from =</span> mean_daily_wind_speed)</span>
+<span id="cb41-7"><a href="#cb41-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb41-8"><a href="#cb41-8" aria-hidden="true" tabindex="-1"></a><span class="fu">ggpairs</span>(wind_speed_time_binned, <span class="at">columns =</span> <span class="fu">c</span>(<span class="dv">2</span>, <span class="dv">3</span>, <span class="dv">5</span>), <span class="at">lower =</span> <span class="fu">list</span>(<span class="at">continuous =</span> lower_function), <span class="at">diag =</span> <span class="fu">list</span>(<span class="at">continuous =</span> diag_function))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 9 rows containing non-finite outside the scale range
+(`stat_density()`).</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 13 rows containing missing values</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 116 rows containing missing values</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>`geom_smooth()` using formula = 'y ~ x'</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 13 rows containing non-finite outside the scale range
+(`stat_smooth()`).</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 13 rows containing missing values or values outside the scale range
+(`geom_point()`).</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 4 rows containing non-finite outside the scale range
+(`stat_density()`).</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 117 rows containing missing values</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>`geom_smooth()` using formula = 'y ~ x'</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 116 rows containing non-finite outside the scale range
+(`stat_smooth()`).</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 116 rows containing missing values or values outside the scale range
+(`geom_point()`).</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>`geom_smooth()` using formula = 'y ~ x'</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 117 rows containing non-finite outside the scale range
+(`stat_smooth()`).</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 117 rows containing missing values or values outside the scale range
+(`geom_point()`).</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 116 rows containing non-finite outside the scale range
+(`stat_density()`).</code></pre>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="data_description_files/figure-html/unnamed-chunk-7-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb57"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb57-1"><a href="#cb57-1" aria-hidden="true" tabindex="-1"></a>relative_humidity_time_binned <span class="ot">=</span> master_weather_data <span class="sc">%&gt;%</span></span>
+<span id="cb57-2"><a href="#cb57-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(datetime, relative_humidity, weather_station_location) <span class="sc">%&gt;%</span></span>
+<span id="cb57-3"><a href="#cb57-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">time_bin =</span> <span class="fu">floor_date</span>(datetime, <span class="at">unit =</span> <span class="st">"day"</span>)) <span class="sc">%&gt;%</span></span>
+<span id="cb57-4"><a href="#cb57-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(time_bin, weather_station_location) <span class="sc">%&gt;%</span></span>
+<span id="cb57-5"><a href="#cb57-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">mean_daily_relative_humidity =</span> <span class="fu">mean</span>(relative_humidity), <span class="at">.groups =</span> <span class="st">"drop_last"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb57-6"><a href="#cb57-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_wider</span>(<span class="at">names_from =</span> weather_station_location, <span class="at">values_from =</span> mean_daily_relative_humidity)</span>
+<span id="cb57-7"><a href="#cb57-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb57-8"><a href="#cb57-8" aria-hidden="true" tabindex="-1"></a><span class="fu">ggpairs</span>(relative_humidity_time_binned, <span class="at">columns =</span> <span class="dv">2</span><span class="sc">:</span><span class="dv">5</span>, <span class="at">lower =</span> <span class="fu">list</span>(<span class="at">continuous =</span> lower_function), <span class="at">diag =</span> <span class="fu">list</span>(<span class="at">continuous =</span> diag_function))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 9 rows containing non-finite outside the scale range
+(`stat_density()`).</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 13 rows containing missing values</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 15 rows containing missing values</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 68 rows containing missing values</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>`geom_smooth()` using formula = 'y ~ x'</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 13 rows containing non-finite outside the scale range
+(`stat_smooth()`).</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 13 rows containing missing values or values outside the scale range
+(`geom_point()`).</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 4 rows containing non-finite outside the scale range
+(`stat_density()`).</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 11 rows containing missing values</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 72 rows containing missing values</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>`geom_smooth()` using formula = 'y ~ x'</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 15 rows containing non-finite outside the scale range
+(`stat_smooth()`).</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 15 rows containing missing values or values outside the scale range
+(`geom_point()`).</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>`geom_smooth()` using formula = 'y ~ x'</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 11 rows containing non-finite outside the scale range
+(`stat_smooth()`).</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 11 rows containing missing values or values outside the scale range
+(`geom_point()`).</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 7 rows containing non-finite outside the scale range
+(`stat_density()`).</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 68 rows containing missing values</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>`geom_smooth()` using formula = 'y ~ x'</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 68 rows containing non-finite outside the scale range
+(`stat_smooth()`).</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 68 rows containing missing values or values outside the scale range
+(`geom_point()`).</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>`geom_smooth()` using formula = 'y ~ x'</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 72 rows containing non-finite outside the scale range
+(`stat_smooth()`).</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 72 rows containing missing values or values outside the scale range
+(`geom_point()`).</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>`geom_smooth()` using formula = 'y ~ x'</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 68 rows containing non-finite outside the scale range
+(`stat_smooth()`).</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 68 rows containing missing values or values outside the scale range
+(`geom_point()`).</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 68 rows containing non-finite outside the scale range
+(`stat_density()`).</code></pre>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="data_description_files/figure-html/unnamed-chunk-8-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb86"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb86-1"><a href="#cb86-1" aria-hidden="true" tabindex="-1"></a>dew_point_time_binned <span class="ot">=</span> master_weather_data <span class="sc">%&gt;%</span></span>
+<span id="cb86-2"><a href="#cb86-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(datetime, dew_point, weather_station_location) <span class="sc">%&gt;%</span></span>
+<span id="cb86-3"><a href="#cb86-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">time_bin =</span> <span class="fu">floor_date</span>(datetime, <span class="at">unit =</span> <span class="st">"day"</span>)) <span class="sc">%&gt;%</span></span>
+<span id="cb86-4"><a href="#cb86-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(time_bin, weather_station_location) <span class="sc">%&gt;%</span></span>
+<span id="cb86-5"><a href="#cb86-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">mean_daily_dew_point =</span> <span class="fu">mean</span>(dew_point), <span class="at">.groups =</span> <span class="st">"drop_last"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb86-6"><a href="#cb86-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_wider</span>(<span class="at">names_from =</span> weather_station_location, <span class="at">values_from =</span> mean_daily_dew_point)</span>
+<span id="cb86-7"><a href="#cb86-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb86-8"><a href="#cb86-8" aria-hidden="true" tabindex="-1"></a><span class="fu">ggpairs</span>(dew_point_time_binned, <span class="at">columns =</span> <span class="dv">2</span><span class="sc">:</span><span class="dv">5</span>, <span class="at">lower =</span> <span class="fu">list</span>(<span class="at">continuous =</span> lower_function), <span class="at">diag =</span> <span class="fu">list</span>(<span class="at">continuous =</span> diag_function))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 9 rows containing non-finite outside the scale range
+(`stat_density()`).</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 13 rows containing missing values</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 15 rows containing missing values</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 68 rows containing missing values</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>`geom_smooth()` using formula = 'y ~ x'</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 13 rows containing non-finite outside the scale range
+(`stat_smooth()`).</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 13 rows containing missing values or values outside the scale range
+(`geom_point()`).</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 4 rows containing non-finite outside the scale range
+(`stat_density()`).</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 11 rows containing missing values</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 72 rows containing missing values</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>`geom_smooth()` using formula = 'y ~ x'</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 15 rows containing non-finite outside the scale range
+(`stat_smooth()`).</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 15 rows containing missing values or values outside the scale range
+(`geom_point()`).</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>`geom_smooth()` using formula = 'y ~ x'</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 11 rows containing non-finite outside the scale range
+(`stat_smooth()`).</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 11 rows containing missing values or values outside the scale range
+(`geom_point()`).</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 7 rows containing non-finite outside the scale range
+(`stat_density()`).</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 68 rows containing missing values</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>`geom_smooth()` using formula = 'y ~ x'</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 68 rows containing non-finite outside the scale range
+(`stat_smooth()`).</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 68 rows containing missing values or values outside the scale range
+(`geom_point()`).</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>`geom_smooth()` using formula = 'y ~ x'</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 72 rows containing non-finite outside the scale range
+(`stat_smooth()`).</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 72 rows containing missing values or values outside the scale range
+(`geom_point()`).</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>`geom_smooth()` using formula = 'y ~ x'</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 68 rows containing non-finite outside the scale range
+(`stat_smooth()`).</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 68 rows containing missing values or values outside the scale range
+(`geom_point()`).</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 68 rows containing non-finite outside the scale range
+(`stat_density()`).</code></pre>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="data_description_files/figure-html/unnamed-chunk-9-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>trying something with ggforce</p>
+<p>ggforce seems much better for making higher quality figures, but ggally is faster for exploratory data analysis as the correlation coefficients, and density plots are made automatically.</p>
+<p>may abandon the ggforce plots unless it is necessary to make higher quality plots.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb115"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb115-1"><a href="#cb115-1" aria-hidden="true" tabindex="-1"></a>temp_time_binned <span class="ot">=</span> master_weather_data <span class="sc">%&gt;%</span></span>
+<span id="cb115-2"><a href="#cb115-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(datetime, temperature, weather_station_location) <span class="sc">%&gt;%</span></span>
+<span id="cb115-3"><a href="#cb115-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">time_bin =</span> <span class="fu">floor_date</span>(datetime, <span class="at">unit =</span> <span class="st">"day"</span>)) <span class="sc">%&gt;%</span></span>
+<span id="cb115-4"><a href="#cb115-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(time_bin, weather_station_location) <span class="sc">%&gt;%</span></span>
+<span id="cb115-5"><a href="#cb115-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">mean_daily_temp =</span> <span class="fu">mean</span>(temperature), <span class="at">.groups =</span> <span class="st">"drop_last"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb115-6"><a href="#cb115-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_wider</span>(<span class="at">names_from =</span> weather_station_location, <span class="at">values_from =</span> mean_daily_temp)</span>
+<span id="cb115-7"><a href="#cb115-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb115-8"><a href="#cb115-8" aria-hidden="true" tabindex="-1"></a>temp_correlation_data <span class="ot">=</span> temp_time_binned <span class="sc">%&gt;%</span></span>
+<span id="cb115-9"><a href="#cb115-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ungroup</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb115-10"><a href="#cb115-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(<span class="sc">-</span>time_bin)</span>
+<span id="cb115-11"><a href="#cb115-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb115-12"><a href="#cb115-12" aria-hidden="true" tabindex="-1"></a>correlation_results <span class="ot">=</span> psych<span class="sc">::</span><span class="fu">corr.test</span>(temp_correlation_data, <span class="at">use =</span> <span class="st">"pairwise"</span>, <span class="at">method =</span> <span class="st">"pearson"</span>, <span class="at">adjust =</span> <span class="st">"none"</span>)</span>
+<span id="cb115-13"><a href="#cb115-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb115-14"><a href="#cb115-14" aria-hidden="true" tabindex="-1"></a>correlation_coefficients <span class="ot">=</span> <span class="fu">as.data.frame</span>(correlation_results<span class="sc">$</span>r) <span class="sc">%&gt;%</span></span>
+<span id="cb115-15"><a href="#cb115-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rownames_to_column</span>(<span class="st">"var_y"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb115-16"><a href="#cb115-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_longer</span>(<span class="sc">-</span>var_y, <span class="at">names_to =</span> <span class="st">"var_x"</span>, <span class="at">values_to =</span> <span class="st">"r"</span>)</span>
+<span id="cb115-17"><a href="#cb115-17" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb115-18"><a href="#cb115-18" aria-hidden="true" tabindex="-1"></a>correlation_p_values <span class="ot">=</span> <span class="fu">as.data.frame</span>(correlation_results<span class="sc">$</span>p) <span class="sc">%&gt;%</span></span>
+<span id="cb115-19"><a href="#cb115-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rownames_to_column</span>(<span class="st">"var_y"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb115-20"><a href="#cb115-20" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_longer</span>(<span class="sc">-</span>var_y, <span class="at">names_to =</span> <span class="st">"var_x"</span>, <span class="at">values_to =</span> <span class="st">"p"</span>)</span>
+<span id="cb115-21"><a href="#cb115-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb115-22"><a href="#cb115-22" aria-hidden="true" tabindex="-1"></a>correlation_labels <span class="ot">=</span> correlation_coefficients <span class="sc">%&gt;%</span></span>
+<span id="cb115-23"><a href="#cb115-23" aria-hidden="true" tabindex="-1"></a>  <span class="fu">left_join</span>(correlation_p_values, <span class="at">by =</span> <span class="fu">c</span>(<span class="st">"var_x"</span>, <span class="st">"var_y"</span>)) <span class="sc">%&gt;%</span></span>
+<span id="cb115-24"><a href="#cb115-24" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">label =</span> <span class="fu">paste0</span>(<span class="st">"r = "</span>, <span class="fu">round</span>(r, <span class="dv">3</span>),</span>
+<span id="cb115-25"><a href="#cb115-25" aria-hidden="true" tabindex="-1"></a>                        <span class="st">"/n"</span>,</span>
+<span id="cb115-26"><a href="#cb115-26" aria-hidden="true" tabindex="-1"></a>                        <span class="st">"p = "</span>, <span class="fu">signif</span>(p, <span class="dv">3</span>)))</span>
+<span id="cb115-27"><a href="#cb115-27" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb115-28"><a href="#cb115-28" aria-hidden="true" tabindex="-1"></a>temp_time_binned <span class="sc">%&gt;%</span></span>
+<span id="cb115-29"><a href="#cb115-29" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>() <span class="sc">+</span></span>
+<span id="cb115-30"><a href="#cb115-30" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_autopoint</span>(<span class="fu">aes</span>(<span class="at">x =</span> .panel_x, <span class="at">y =</span> .panel_y, <span class="at">colour =</span> time_bin)) <span class="sc">+</span></span>
+<span id="cb115-31"><a href="#cb115-31" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_autodensity</span>(<span class="fu">aes</span>(<span class="at">x =</span> .panel_x), <span class="at">fill =</span> <span class="st">"dodgerblue2"</span>, <span class="at">alpha =</span> <span class="fl">0.5</span>) <span class="sc">+</span></span>
+<span id="cb115-32"><a href="#cb115-32" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_smooth</span>(<span class="fu">aes</span>(<span class="at">x =</span> .panel_x, <span class="at">y =</span> .panel_y), <span class="at">method =</span> <span class="st">"lm"</span>) <span class="sc">+</span></span>
+<span id="cb115-33"><a href="#cb115-33" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_matrix</span>(<span class="fu">vars</span>(<span class="st">"St. John's International Airport"</span>, <span class="st">"Baccalieu Island"</span>, <span class="st">"Gull Island"</span>, <span class="st">"Great Island"</span>), <span class="at">layer.diag =</span> <span class="dv">2</span>, <span class="at">layer.upper =</span> <span class="dv">3</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 88 rows containing non-finite outside the scale range
+(`stat_autodensity()`).</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>`geom_smooth()` using formula = 'y ~ x'</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 247 rows containing non-finite outside the scale range
+(`stat_smooth()`).</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 247 rows containing missing values or values outside the scale range
+(`geom_point()`).</code></pre>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="data_description_files/figure-html/unnamed-chunk-10-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
 </section>
 
 </main>

@@ -11,6 +11,9 @@ editor: source
 library(StreamMetabolism) ## Has a very useful sunrise/sunset function
 library(lunar)
 library(tidyverse)
+library(GGally)
+library(ggforce)
+library(patchwork)
 
 ```
 
@@ -206,6 +209,8 @@ The correlation is pretty tight, although the Gull Island kestrel usually record
 No Barometric Pressure is recorded, only station pressure. i will include the column only for comparisons sake. 
 the elevation is taken from the same website as the data was taken from. 
 
+because the airport data is taken every hour on the half hour, the time will be rounded to match the data collected from the kestrel 5500 stations.
+
 ```{r}
 file_list = list.files("SJIA_weather_data")
 
@@ -220,6 +225,9 @@ airport_weather_data = bind_rows(airport_weather_data, temp_weather_data)
 airport_weather_data = airport_weather_data %>%
   mutate(datetime = as_datetime(Date.Time..LST., format = "%Y-%m-%d %H:%M")) %>%
   mutate(datetime = force_tz(datetime, tzone = "America/St_Johns")) %>%
+  mutate(datetime = round_date(datetime, "hour"))
+
+airport_weather_data_matched_variables = airport_weather_data %>%
   select(datetime, Temp...C., Stn.Press..kPa., Wind.Spd..km.h., Wind.Chill, Rel.Hum...., Dew.Point.Temp...C.) %>%
   rename(
     temperature = Temp...C.,
@@ -230,35 +238,241 @@ airport_weather_data = airport_weather_data %>%
     dew_point = Dew.Point.Temp...C.
   ) %>%
   mutate(barometric_pressure = (station_pressure)*((1-(0.0065*140.50)/(temperature+273.15+(0.0065*140.50)))^-5.257)) %>%
-  relocate(barometric_pressure, .before = wind_speed)
+  relocate(barometric_pressure, .before = wind_speed) %>%
+  filter(datetime >= "2025-06-10" & datetime <= "2025-10-29")
 ```
 
 
 June 10th to October 28th
 
 ```{r}
-airport_weather_data = airport_weather_data %>%
-  rename_with(~paste0("sjia_", .x), .cols = -datetime)
+airport_weather_data_matched_variables = airport_weather_data_matched_variables %>%
+  mutate(weather_station_location = "St. John's International Airport")
 
 baccalieu_weather = baccalieu_weather %>%
-  rename_with(~paste0("baccalieu_", .x), .cols = -datetime)
+  mutate(weather_station_location = "Baccalieu Island")
 
 gull_weather = gull_weather %>%
-  rename_with(~paste0("gull_", .x), .cols = -datetime)
+  mutate(weather_station_location = "Gull Island")
 
 great_weather = great_weather %>%
-  rename_with(~paste0("great_", .x), .cols = -datetime)
+  mutate(weather_station_location = "Great Island")
+```
+
+```{r}
+master_weather_data = bind_rows(airport_weather_data_matched_variables, baccalieu_weather, gull_weather, great_weather)
 ```
 
 
 ```{r}
-master_weather_data = as_tibble(seq(ymd_hm("2025-06-10 00:00", tz = "America/St_Johns"), ymd_hm("2025-10-29 5:00", tz = "America/St_Johns"), by = "1 hour")) %>%
-  rename(datetime = value)
-```
+#| warning: false
+#| message: false
 
+lower_function = function(data, mapping) {
+  ggplot(data = data, mapping = mapping) +
+    geom_point(alpha = 0.5) +
+    geom_smooth(method = "lm") +
+    scale_x_continuous() +
+    scale_y_continuous()
+}
+
+diag_function = function(data, mapping) {
+  ggplot(data = data, mapping = mapping) +
+    geom_density() +
+    scale_x_continuous()
+}
+
+temp_time_binned = master_weather_data %>%
+  select(datetime, temperature, weather_station_location) %>%
+  mutate(time_bin = floor_date(datetime, unit = "day")) %>%
+  group_by(time_bin, weather_station_location) %>%
+  summarise(mean_daily_temp = mean(temperature), .groups = "drop_last") %>%
+  pivot_wider(names_from = weather_station_location, values_from = mean_daily_temp)
+
+ggpairs(temp_time_binned, columns = 2:5, 
+        title = "Correlation Matrix of Daily Mean Temperatures \nat Different Locations of Weather Station",
+          lower = list(continuous = lower_function),
+          diag = list(continuous = diag_function))
+
+```
 
 ```{r}
-master_weather_data = master_weather_data %>%
-  left_join(airport_weather_data, by = c("datetime")) 
+barometric_pressure_time_binned = master_weather_data %>%
+  select(datetime, barometric_pressure, weather_station_location) %>%
+  mutate(time_bin = floor_date(datetime, unit = "day")) %>%
+  group_by(time_bin, weather_station_location) %>%
+  summarise(mean_daily_barometric_pressure = mean(barometric_pressure), .groups = "drop_last") %>%
+  pivot_wider(names_from = weather_station_location, values_from = mean_daily_barometric_pressure)
+
+ggpairs(barometric_pressure_time_binned, columns = 2:5, lower = list(continuous = lower_function), diag = list(continuous = diag_function))
+  
 ```
+
+gull island has no wind data so it is left out of this exploratory visualization. but what is interesting is that despite how strongly correlated all other common measures are, wind speed appears to not be reliable between stations...
+more data needed to confirm, could depend on location and direction of the impeller of the kestrel, could actually be this metric is non transferrable. 
+
+```{r}
+wind_speed_time_binned = master_weather_data %>%
+  select(datetime, wind_speed, weather_station_location) %>%
+  mutate(time_bin = floor_date(datetime, unit = "day")) %>%
+  group_by(time_bin, weather_station_location) %>%
+  summarise(mean_daily_wind_speed = mean(wind_speed), .groups = "drop_last") %>%
+  pivot_wider(names_from = weather_station_location, values_from = mean_daily_wind_speed)
+
+ggpairs(wind_speed_time_binned, columns = c(2, 3, 5), lower = list(continuous = lower_function), diag = list(continuous = diag_function))
+```
+
+```{r}
+relative_humidity_time_binned = master_weather_data %>%
+  select(datetime, relative_humidity, weather_station_location) %>%
+  mutate(time_bin = floor_date(datetime, unit = "day")) %>%
+  group_by(time_bin, weather_station_location) %>%
+  summarise(mean_daily_relative_humidity = mean(relative_humidity), .groups = "drop_last") %>%
+  pivot_wider(names_from = weather_station_location, values_from = mean_daily_relative_humidity)
+
+ggpairs(relative_humidity_time_binned, columns = 2:5, lower = list(continuous = lower_function), diag = list(continuous = diag_function))
+```
+
+```{r}
+dew_point_time_binned = master_weather_data %>%
+  select(datetime, dew_point, weather_station_location) %>%
+  mutate(time_bin = floor_date(datetime, unit = "day")) %>%
+  group_by(time_bin, weather_station_location) %>%
+  summarise(mean_daily_dew_point = mean(dew_point), .groups = "drop_last") %>%
+  pivot_wider(names_from = weather_station_location, values_from = mean_daily_dew_point)
+
+ggpairs(dew_point_time_binned, columns = 2:5, lower = list(continuous = lower_function), diag = list(continuous = diag_function))
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+trying something with ggforce
+
+ggforce seems much better for making higher quality figures, but ggally is faster for exploratory data analysis as the correlation coefficients, and density plots are made automatically. 
+
+may abandon the ggforce plots unless it is necessary to make higher quality plots.
+
+```{r}
+temp_time_binned = master_weather_data %>%
+  select(datetime, temperature, weather_station_location) %>%
+  mutate(time_bin = floor_date(datetime, unit = "day")) %>%
+  group_by(time_bin, weather_station_location) %>%
+  summarise(mean_daily_temp = mean(temperature), .groups = "drop_last") %>%
+  pivot_wider(names_from = weather_station_location, values_from = mean_daily_temp)
+
+temp_correlation_data = temp_time_binned %>%
+  ungroup() %>%
+  select(-time_bin)
+
+correlation_results = psych::corr.test(temp_correlation_data, use = "pairwise", method = "pearson", adjust = "none")
+
+correlation_coefficients = as.data.frame(correlation_results$r) %>%
+  rownames_to_column("var_y") %>%
+  pivot_longer(-var_y, names_to = "var_x", values_to = "r")
+  
+correlation_p_values = as.data.frame(correlation_results$p) %>%
+  rownames_to_column("var_y") %>%
+  pivot_longer(-var_y, names_to = "var_x", values_to = "p")
+
+correlation_labels = correlation_coefficients %>%
+  left_join(correlation_p_values, by = c("var_x", "var_y")) %>%
+  mutate(label = paste0("r = ", round(r, 3),
+                        "/n",
+                        "p = ", signif(p, 3)))
+
+temp_time_binned %>%
+  ggplot() +
+  geom_autopoint(aes(x = .panel_x, y = .panel_y, colour = time_bin)) +
+  geom_autodensity(aes(x = .panel_x), fill = "dodgerblue2", alpha = 0.5) +
+  geom_smooth(aes(x = .panel_x, y = .panel_y), method = "lm") +
+  facet_matrix(vars("St. John's International Airport", "Baccalieu Island", "Gull Island", "Great Island"), layer.diag = 2, layer.upper = 3)
+```
+
+
+
+# Weather Data for Building Models
+
+```{r}
+cleaned_airport_weather_data = airport_weather_data %>%
+  select(datetime,Weather, Visibility..km., Temp...C., Stn.Press..kPa., Rel.Hum...., Hmdx, Dew.Point.Temp...C., Wind.Spd..km.h., Wind.Dir..10s.deg., Wind.Chill) %>%
+  rename(
+    weather = Weather,
+    visibility = Visibility..km.,
+    temperature = Temp...C.,
+    station_pressure = Stn.Press..kPa.,
+    relative_humidity = Rel.Hum....,
+    humidex = Hmdx,
+    dew_point = Dew.Point.Temp...C.,
+    wind_speed = Wind.Spd..km.h.,
+    wind_direction = Wind.Dir..10s.deg.,
+    wind_chill = Wind.Chill
+  ) %>%
+  mutate(barometric_pressure = (station_pressure)*((1-(0.0065*140.50)/(temperature+273.15+(0.0065*140.50)))^-5.257)) %>%
+  relocate(barometric_pressure, .before = relative_humidity) %>%
+  mutate(weather = tolower(weather))
+```
+
+```{r}
+fog_present = cleaned_airport_weather_data %>%
+  mutate(fog = str_detect(weather, "fog"))
+```
+
+```{r}
+baccalieu_temp_prediction = lm(`Baccalieu Island` ~ `St. John's International Airport`, temp_time_binned)
+
+summary(baccalieu_temp_prediction)
+
+plot(baccalieu_temp_prediction)
+```
+
+```{r}
+gull_temp_prediction = lm(`Gull Island` ~ `St. John's International Airport`, temp_time_binned)
+
+summary(gull_temp_prediction)
+
+plot(gull_temp_prediction)
+```
+
+```{r}
+great_temp_prediction = lm(`Great Island` ~ `St. John's International Airport`, temp_time_binned)
+
+summary(great_temp_prediction)
+
+plot(great_temp_prediction)
+```
+
+
+
+
+
+
+
 
