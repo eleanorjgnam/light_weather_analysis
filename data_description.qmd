@@ -1,20 +1,25 @@
 ---
 title: "Data Description/Exploration"
 author: "Eleanor and Liam"
-format: html
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    number-sections: true
+    code-fold: true
+    code-tools: true
 editor: source
 ---
 ```{r}
 #| label: setup
 #| include: false
 
-library(StreamMetabolism) ## Has a very useful sunrise/sunset function
-library(lunar)
+library(MASS)
+library(StreamMetabolism) ## Has a very useful sunrise/sunset function.
 library(tidyverse)
+library(lunar)
 library(GGally)
-library(ggforce)
 library(patchwork)
-
 ```
 
 # Helper Functions
@@ -33,102 +38,102 @@ nightdater <- function (colIn) {
 
 # Weather Data
 
-Our weather data from 2025 was collected via Kestrel 5500 weather meters. We had one on Gull Island, one on Great Island, and one on Baccalieu Island. We had persistent problems with the wind-measuring propellers breaking or getting jammed, so our record for wind data in particular is incomplete. One goal would be to compare the wind data that we do have to publicly available wind data, to see if the public data is an adequate replacement.
+Our weather data from 2025 was collected via Kestrel 5500 weather meters. We had one on Gull Island, one on Great Island, and one on Baccalieu Island. We had persistent problems with the wind-measuring propellers breaking or getting jammed, so our record for wind data in particular is incomplete. One goal is to compare the island weather data with publicly available weather data from St. John's International Airport to assess whether airport data can replace missing island-level measurements.
 
-Great Island kestrel coordinates: N47 11.26, W59 49.03 (same as light meter)
+| Island | Latitude | Longitude | Kestrel Marked Coordinates | Notes |
+|:---:|:---:|:---:|:---:|:---:|
+| Gull Island | 47.2600 | -52.7757 | N47 15.6, W52 46.54 | Kestrel location |
+| Great Island | 47.1877 | -52.8172 | N47 11.26, W52 49.03 | Same location as light meter |
+| Baccalieu Island | 48.1220 | -52.7982 | N48 7.32, W52 47.89 | Same location as light meter |
 
-Gull Island kestrel coordinates: N47 15.6, W52 46.54 
+: Kestrel Weather Station Locations {tbl-colwidths="[15, 15, 15, 35, 20]"}
 
-Baccalieu Island kestrel coordinates: N48 -7.32, W52 47.89 (same as light meter)
-
-## Standardization of Units for Comparison.
+## Standardization of Units for Comparison
 
 In order for proper comparison to occur some values will have to be converted to different units due to differences in standards established by the lab for the Kestrel 5500 and the St. John's International Airport. From here on out, the standard is as follows.
 
 |Variable|Unit|
 |-----|-----|
-|datetime|YYYY-MM-DD hh:mm:ss|
-|temperature|°C|
-|station_pressure|kPa|
-|barometric_pressure|kPa|
-|wind_speed|km/h|
-|wind_chill|°C|
-|relative_humidity|%|
-|dew_point|°C|
+|`datetime`|YYYY-MM-DD hh:mm:ss|
+|`temperature`|°C|
+|`station_pressure`|kPa|
+|`barometric_pressure`|kPa|
+|`wind_speed`|km/h|
+|`wind_chill`|°C|
+|`relative_humidity`|%|
+|`dew_point`|°C|
 
 :Standardized Units of Measurements {tbl-colwidths="[75,25]"}
 
-## Read in Kestrel data
+## Kestrel Import Function
 
 Read in the data so the date and time readings are datetime objects and in Newfoundland time. 
 
 The Gull Island and Great Island kestrels had long periods where their wind impellers were broken. We also typically turned the kestrels on before they were deployed and did not turn them off until several days after retrieval, so I will trim the data to remove the extra days, and replace the '0' wind speed with NA where the impellers were broken. 
 
 ```{r}
+#| label: kestrel_weather_import_function
+
+read_kestrel_weather = function(file, island, start_date, end_date, wind_all_missing = FALSE, wind_missing_after = NULL) {
+  kestrel_weather = read_csv(file, show_col_types = FALSE) %>%
+    mutate(
+      datetime = as_datetime(Time, format = "%m/%d/%Y %H:%M"),
+      datetime = force_tz(datetime, tzone = "America/St_Johns")
+    ) %>%
+    filter(datetime >= ymd(start_date, tz = "America/St_Johns"),
+           datetime <= ymd(end_date, tz = "America/St_Johns"))
+  
+  if(wind_all_missing) {
+    kestrel_weather = kestrel_weather %>%
+      mutate(`Wind Speed` = NA_real_)
+  }
+  if(!is.null(wind_missing_after)) {
+    kestrel_weather = kestrel_weather %>%
+      mutate(`Wind Speed` = if_else(datetime > ymd(wind_missing_after), NA_real_, `Wind Speed`))
+  }
+  
+  kestrel_weather %>%
+    transmute(
+      datetime,
+      temperature = Temp,
+      station_pressure = `Station P.` / 10,
+      barometric_pressure = Baro. / 10,
+      wind_speed = `Wind Speed` * 3.6,
+      wind_chill = `Wind Chill`,
+      relative_humidity = `Rel. Hum.`,
+      dew_point = `Dew Point`,
+      weather_station_location = island
+    )
+}
+```
+
+## Read in Kestrel data
+
+```{r}
 #| label: kestrel_data
 
-baccalieu_weather <- read_csv("data/baccalieu_2025_weather.csv", show_col_types = FALSE) %>% 
-  mutate(datetime = as_datetime(Time, format = "%m/%d/%Y %H:%M")) %>% 
-  mutate(datetime = force_tz(datetime, tzone = "America/St_Johns")) %>% 
-  filter(datetime > "2025-06-10" & datetime < "2025-10-21") %>%
-  select("datetime", "Temp", "Station P.", "Baro.", "Wind Speed", "Wind Chill", "Rel. Hum.", "Dew Point") %>%
-  rename(
-    temperature = "Temp",
-    station_pressure = "Station P.",
-    barometric_pressure = "Baro.",
-    wind_speed = "Wind Speed",
-    wind_chill = "Wind Chill",
-    relative_humidity = "Rel. Hum.",
-    dew_point = "Dew Point"
-  ) %>%
-  mutate(
-    station_pressure = station_pressure/10,
-    barometric_pressure = barometric_pressure/10,
-    wind_speed = wind_speed*3.6
-  )
+baccalieu_weather = read_kestrel_weather(
+  file = "data/baccalieu_2025_weather.csv",
+  island = "Baccalieu Island",
+  start_date = "2025-06-10",
+  end_date = "2025-10-21"
+)
 
+gull_weather = read_kestrel_weather(
+  file = "data/gull_2025_weather.csv",
+  island = "Gull Island",
+  start_date = "2025-06-16",
+  end_date = "2025-10-29",
+  wind_all_missing = TRUE
+)
 
-gull_weather <- read_csv("data/gull_2025_weather.csv", show_col_types = FALSE) %>% 
-  mutate(datetime = as_datetime(Time, format = "%m/%d/%Y %H:%M")) %>% 
-  mutate(datetime = force_tz(datetime, tzone = "America/St_Johns")) %>% 
-  filter(datetime > "2025-06-16" & datetime < "2025-10-29") %>% 
-  mutate(`Wind Speed` = NA) %>% ## This impeller never worked
-  select("datetime", "Temp", "Station P.", "Baro.", "Wind Speed", "Wind Chill", "Rel. Hum.", "Dew Point") %>%
-  rename(
-    temperature = "Temp",
-    station_pressure = "Station P.",
-    barometric_pressure = "Baro.",
-    wind_speed = "Wind Speed",
-    wind_chill = "Wind Chill",
-    relative_humidity = "Rel. Hum.",
-    dew_point = "Dew Point"
-  ) %>%
-  mutate(
-    station_pressure = station_pressure/10,
-    barometric_pressure = barometric_pressure/10,
-    wind_speed = wind_speed*3.6
-  )
-
-great_weather <- read_csv("data/great_2025_weather.csv", show_col_types = FALSE) %>% 
-  mutate(datetime = as_datetime(Time, format = "%m/%d/%Y %H:%M")) %>% 
-  mutate(datetime = force_tz(datetime, tzone = "America/St_Johns")) %>% 
-  filter(datetime > "2025-06-23" & datetime < "2025-09-05") %>% 
-  mutate(`Wind Speed` = if_else(datetime > "2025-07-19", NA, `Wind Speed`)) %>%
-  select("datetime", "Temp", "Station P.", "Baro.", "Wind Speed", "Wind Chill", "Rel. Hum.", "Dew Point") %>%
-  rename(
-    temperature = "Temp",
-    station_pressure = "Station P.",
-    barometric_pressure = "Baro.",
-    wind_speed = "Wind Speed",
-    wind_chill = "Wind Chill",
-    relative_humidity = "Rel. Hum.",
-    dew_point = "Dew Point"
-  ) %>%
-  mutate(
-    station_pressure = station_pressure/10,
-    barometric_pressure = barometric_pressure/10,
-    wind_speed = wind_speed*3.6
-  )
+great_weather = read_kestrel_weather(
+  file = "data/great_2025_weather.csv",
+  island = "Great Island",
+  start_date = "2025-06-23",
+  end_date = "2025-09-05",
+  wind_missing_after = "2025-07-19"
+)
 ```
 # Light Data
 
@@ -139,72 +144,34 @@ We had one light meter on Great Island (for Witless Bay) in 2025 and one on Bacc
 ```{r}
 #| label: light_data
 
-baccalieu_light <- read_csv("data/baccalieu_light_20251023.csv", show_col_types = FALSE)
+baccalieu_light <- read_csv("data/baccalieu_light_20251023.csv", show_col_types = FALSE) %>%
+  mutate(site = "Baccalieu Island")
 
-witless_light <- read_csv("data/witless_light_20250913.csv", show_col_types = FALSE)
+witless_light <- read_csv("data/witless_light_20250913.csv", show_col_types = FALSE) %>%
+  mutate(site = "Great Island, Witless Bay")
+
+light_data = bind_rows(baccalieu_light, witless_light)
 ```
 
 One thing that may prove useful is filtering the light data for before/after (etc) nautical or astronomical twilight. The data frames have a sun elevation variable; nautical night begins when the sun is 12 degrees below the horizon, and astronomical night begins when the sun is 18 degrees below the horizon.
 
-# Sunrise and Sunset times
+## Sunrise and Sunset times
 
 For doing anything with light data, it can be useful to have a list of sunrise and sunset times. Our islands are not so far apart that these need to be calculated separately. The package "StreamMetabolism" has a very useful function for calculating sunrise and sunset as new columns using a date column. However, the function is slow and computationally heavy, so I usually make a list of sunrise and sunset times for our study period, then join that list to other dataframes as needed.
 
 ```{r}
 #| label: sunrise_and_sunset_times
 
-suntimes <- as.data.frame(seq(ymd("2025-06-01"), ymd("2025-10-31"), by = "1 day")) %>% 
-  rename(date = 1)
-
-suntimes <- suntimes %>% 
-  mutate(lat = 47.58) %>% 
-  mutate(lon = -52.71) %>% 
+suntimes  = tibble(
+  date = seq(ymd("2025-06-01"), ymd("2025-10-31"), by = "1 day"),
+  lat = 47.58,
+  lon = -52.71
+) %>% 
   rowwise() %>% 
   mutate(sunrise.set(lat = lat, long = lon, date = date + lubridate::days(1), timezone = "America/St_Johns")) ## Adding one day is necessary to get sunset for the given date rather than the night before
 ```
 
-# Next Steps
-
-For next steps, feel free to do some basic data exploration/visualization of the weather data that we do have. Then I would start looking for useful publicly available weather data, and get those data into R and into useful formats for comparison with our data.
-
-
-## Example: How well does temperature correlate among the islands?
-
-```{r}
-great_temp <- great_weather %>% 
-  mutate(island = "Great") %>% 
-  select(island, datetime, temperature)
-
-gull_temp <- gull_weather %>% 
-  mutate(island = "Gull") %>% 
-  select(island, datetime, temperature)
-
-bac_temp <- baccalieu_weather %>% 
-  mutate(island = "Baccalieu") %>% 
-  select(island, datetime, temperature)
-
-temp <- rbind(great_temp, gull_temp, bac_temp)
-
-temp %>% 
-  mutate(time_bin = round_date(datetime, "1 day")) %>% 
-  group_by(time_bin, island) %>% 
-  summarize(mean_temp = mean(temperature)) %>% 
-  filter(island %in% c("Great", "Gull")) %>% 
-  group_by(time_bin) %>%
-  filter(n() == 2) %>% 
-  pivot_wider(names_from = island, values_from = mean_temp) %>% 
-  ggplot(aes(x = Great, y = Gull, color = time_bin)) +
-  geom_point() +
-  geom_smooth(method = "lm") +
-  ylab("Daily Average Temp on Gull") +
-  xlab("Daily Average Temp on Great")
-```
-
-The correlation is pretty tight, although the Gull Island kestrel usually recorded warmer temperatures (it was much more protected and further inland.). 
-
-
-
-# St. John's International Airport Weather Data Wrangling
+# St. John's International Airport Weather Data Import and Wrangling
 
 No Barometric Pressure is recorded, only station pressure. i will include the column only for comparisons sake. 
 the elevation is taken from the same website as the data was taken from. 
@@ -212,6 +179,7 @@ the elevation is taken from the same website as the data was taken from.
 because the airport data is taken every hour on the half hour, the time will be rounded to match the data collected from the kestrel 5500 stations.
 
 ```{r}
+#| label: SJIA_weather_data_&_matched_weather_variable_data_set
 file_list = list.files("SJIA_weather_data")
 
 airport_weather_data = as_tibble(read.csv(paste0("SJIA_weather_data/", file_list[1])))
@@ -222,206 +190,170 @@ for(i in 2:length(file_list)) {
 airport_weather_data = bind_rows(airport_weather_data, temp_weather_data)
 }
 
-airport_weather_data = airport_weather_data %>%
-  mutate(datetime = as_datetime(Date.Time..LST., format = "%Y-%m-%d %H:%M")) %>%
-  mutate(datetime = force_tz(datetime, tzone = "America/St_Johns")) %>%
-  mutate(datetime = round_date(datetime, "hour"))
-
-airport_weather_data_matched_variables = airport_weather_data %>%
-  select(datetime, Temp...C., Stn.Press..kPa., Wind.Spd..km.h., Wind.Chill, Rel.Hum...., Dew.Point.Temp...C.) %>%
-  rename(
+master_weather_data = airport_weather_data %>%
+  mutate(datetime = as_datetime(Date.Time..LST., format = "%Y-%m-%d %H:%M"),
+         datetime = force_tz(datetime, tzone = "America/St_Johns"),
+         datetime = round_date(datetime, "hour")) %>%
+  transmute(
+    datetime,
     temperature = Temp...C.,
     station_pressure = Stn.Press..kPa.,
+    barometric_pressure = station_pressure * ((1 - (0.0065 * 140.50) / (temperature + 273.15 + (0.0065 * 140.50)))^-5.257),
     wind_speed = Wind.Spd..km.h.,
     wind_chill = Wind.Chill,
     relative_humidity = Rel.Hum....,
-    dew_point = Dew.Point.Temp...C.
+    dew_point = Dew.Point.Temp...C.,
+    weather_station_location = "St. John's International Airport"
   ) %>%
-  mutate(barometric_pressure = (station_pressure)*((1-(0.0065*140.50)/(temperature+273.15+(0.0065*140.50)))^-5.257)) %>%
-  relocate(barometric_pressure, .before = wind_speed) %>%
-  filter(datetime >= "2025-06-10" & datetime <= "2025-10-29")
+  filter(datetime >= "2025-06-10" & datetime <= "2025-10-29") %>%
+  bind_rows(baccalieu_weather, gull_weather, great_weather)
 ```
 
+# Creation of Daily Summaries
 
-June 10th to October 28th
+## Daily Summary Function
 
 ```{r}
-airport_weather_data_matched_variables = airport_weather_data_matched_variables %>%
-  mutate(weather_station_location = "St. John's International Airport")
+#| label: daily_summary_function
 
-baccalieu_weather = baccalieu_weather %>%
-  mutate(weather_station_location = "Baccalieu Island")
-
-gull_weather = gull_weather %>%
-  mutate(weather_station_location = "Gull Island")
-
-great_weather = great_weather %>%
-  mutate(weather_station_location = "Great Island")
+make_daily_summary = function(data, variable) {
+  data %>%
+    mutate(date = as_date(datetime)) %>%
+    group_by(date, weather_station_location) %>%
+    summarise(
+      value = mean({{ variable }}, na.rm = TRUE),
+      .groups = "drop"
+    ) %>%
+    pivot_wider(names_from = weather_station_location,
+                values_from = value)
+}
 ```
 
+## Creation of Daily Summary Data Frames
+
 ```{r}
-master_weather_data = bind_rows(airport_weather_data_matched_variables, baccalieu_weather, gull_weather, great_weather)
+#| label: daily_summary_data_frames
+
+daily_temperature = make_daily_summary(master_weather_data, temperature)
+daily_pressure = make_daily_summary(master_weather_data, barometric_pressure)
+daily_wind = make_daily_summary(master_weather_data, wind_speed)
+daily_humidity = make_daily_summary(master_weather_data, relative_humidity)
+daily_dew_point = make_daily_summary(master_weather_data, dew_point)
 ```
 
+# Correlation Matrices
+
+## Functions for ggpairs plots
 
 ```{r}
+#| label: ggpairs_functions
+
+ggpairs_lower_function = function(data, mapping) {
+  ggplot(data = data, mapping = mapping) +
+    geom_point(alpha = 0.5) +
+    geom_smooth(method = "lm", se = FALSE)
+}
+
+ggpairs_diagonal_function = function(data, mapping) {
+  ggplot(data = data, mapping = mapping) +
+    geom_density()
+}
+```
+
+## Daily Temperature Correlation Matrix
+
+```{r}
+#| label: daily_temperature_correlation_matrix
 #| warning: false
 #| message: false
 
-lower_function = function(data, mapping) {
-  ggplot(data = data, mapping = mapping) +
-    geom_point(alpha = 0.5) +
-    geom_smooth(method = "lm") +
-    scale_x_continuous() +
-    scale_y_continuous()
-}
-
-diag_function = function(data, mapping) {
-  ggplot(data = data, mapping = mapping) +
-    geom_density() +
-    scale_x_continuous()
-}
-
-temp_time_binned = master_weather_data %>%
-  select(datetime, temperature, weather_station_location) %>%
-  mutate(time_bin = floor_date(datetime, unit = "day")) %>%
-  group_by(time_bin, weather_station_location) %>%
-  summarise(mean_daily_temp = mean(temperature), .groups = "drop_last") %>%
-  pivot_wider(names_from = weather_station_location, values_from = mean_daily_temp)
-
-ggpairs(temp_time_binned, columns = 2:5, 
-        title = "Correlation Matrix of Daily Mean Temperatures \nat Different Locations of Weather Station",
-          lower = list(continuous = lower_function),
-          diag = list(continuous = diag_function))
-
+ggpairs(
+  daily_temperature,
+  columns = 2:ncol(daily_temperature),
+  title = "Daily Mean Temperature Correlations",
+  lower = list(continuous = ggpairs_lower_function),
+  diag = list(continuous = ggpairs_diagonal_function)
+)
 ```
+
+## Daily Pressure Correlation Matrix
 
 ```{r}
-barometric_pressure_time_binned = master_weather_data %>%
-  select(datetime, barometric_pressure, weather_station_location) %>%
-  mutate(time_bin = floor_date(datetime, unit = "day")) %>%
-  group_by(time_bin, weather_station_location) %>%
-  summarise(mean_daily_barometric_pressure = mean(barometric_pressure), .groups = "drop_last") %>%
-  pivot_wider(names_from = weather_station_location, values_from = mean_daily_barometric_pressure)
+#| label: daily_pressure_correlation_matrix
+#| warning: false
+#| message: false
 
-ggpairs(barometric_pressure_time_binned, columns = 2:5, lower = list(continuous = lower_function), diag = list(continuous = diag_function))
-  
+ggpairs(
+  daily_pressure,
+  columns = 2:ncol(daily_pressure),
+  title = "Daily Mean Pressure Correlations",
+  lower = list(continuous = ggpairs_lower_function),
+  diag = list(continuous = ggpairs_diagonal_function)
+)
 ```
 
-gull island has no wind data so it is left out of this exploratory visualization. but what is interesting is that despite how strongly correlated all other common measures are, wind speed appears to not be reliable between stations...
-more data needed to confirm, could depend on location and direction of the impeller of the kestrel, could actually be this metric is non transferrable. 
+## Daily Wind Correlation Matrix
 
 ```{r}
-wind_speed_time_binned = master_weather_data %>%
-  select(datetime, wind_speed, weather_station_location) %>%
-  mutate(time_bin = floor_date(datetime, unit = "day")) %>%
-  group_by(time_bin, weather_station_location) %>%
-  summarise(mean_daily_wind_speed = mean(wind_speed), .groups = "drop_last") %>%
-  pivot_wider(names_from = weather_station_location, values_from = mean_daily_wind_speed)
+#| label: daily_wind_correlation_matrix
+#| warning: false
+#| message: false
 
-ggpairs(wind_speed_time_binned, columns = c(2, 3, 5), lower = list(continuous = lower_function), diag = list(continuous = diag_function))
+daily_wind_no_gull = daily_wind %>%
+  select(-`Gull Island`)
+
+ggpairs(
+  daily_wind_no_gull,
+  columns = 2:ncol(daily_wind_no_gull),
+  title = "Daily Mean Wind Correlations",
+  lower = list(continuous = ggpairs_lower_function),
+  diag = list(continuous = ggpairs_diagonal_function)
+)
 ```
+
+Wind speed showed weaker agreement among stations than temperature, pressure, humidity, or dew point. Gull Island was excluded because the wind impeller failed for the full deployment. These preliminary results suggest that airport wind speed may not be a reliable substitute for island-level wind measurements, although this should be evaluated more, formally.
+
+## Daily Humidity Correlation Matrix
 
 ```{r}
-relative_humidity_time_binned = master_weather_data %>%
-  select(datetime, relative_humidity, weather_station_location) %>%
-  mutate(time_bin = floor_date(datetime, unit = "day")) %>%
-  group_by(time_bin, weather_station_location) %>%
-  summarise(mean_daily_relative_humidity = mean(relative_humidity), .groups = "drop_last") %>%
-  pivot_wider(names_from = weather_station_location, values_from = mean_daily_relative_humidity)
+#| label: daily_humidity_correlation_matrix
+#| warning: false
+#| message: false
 
-ggpairs(relative_humidity_time_binned, columns = 2:5, lower = list(continuous = lower_function), diag = list(continuous = diag_function))
+ggpairs(
+  daily_humidity,
+  columns = 2:ncol(daily_humidity),
+  title = "Daily Mean Humidity Correlations",
+  lower = list(continuous = ggpairs_lower_function),
+  diag = list(continuous = ggpairs_diagonal_function)
+)
 ```
+
+## Daily Dew Point Correlation Matrix
 
 ```{r}
-dew_point_time_binned = master_weather_data %>%
-  select(datetime, dew_point, weather_station_location) %>%
-  mutate(time_bin = floor_date(datetime, unit = "day")) %>%
-  group_by(time_bin, weather_station_location) %>%
-  summarise(mean_daily_dew_point = mean(dew_point), .groups = "drop_last") %>%
-  pivot_wider(names_from = weather_station_location, values_from = mean_daily_dew_point)
+#| label: daily_dew_point_correlation_matrix
+#| warning: false
+#| message: false
 
-ggpairs(dew_point_time_binned, columns = 2:5, lower = list(continuous = lower_function), diag = list(continuous = diag_function))
+ggpairs(
+  daily_dew_point,
+  columns = 2:ncol(daily_dew_point),
+  title = "Daily Mean Dew Point Correlations",
+  lower = list(continuous = ggpairs_lower_function),
+  diag = list(continuous = ggpairs_diagonal_function)
+)
 ```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-trying something with ggforce
-
-ggforce seems much better for making higher quality figures, but ggally is faster for exploratory data analysis as the correlation coefficients, and density plots are made automatically. 
-
-may abandon the ggforce plots unless it is necessary to make higher quality plots.
-
-```{r}
-temp_time_binned = master_weather_data %>%
-  select(datetime, temperature, weather_station_location) %>%
-  mutate(time_bin = floor_date(datetime, unit = "day")) %>%
-  group_by(time_bin, weather_station_location) %>%
-  summarise(mean_daily_temp = mean(temperature), .groups = "drop_last") %>%
-  pivot_wider(names_from = weather_station_location, values_from = mean_daily_temp)
-
-temp_correlation_data = temp_time_binned %>%
-  ungroup() %>%
-  select(-time_bin)
-
-correlation_results = psych::corr.test(temp_correlation_data, use = "pairwise", method = "pearson", adjust = "none")
-
-correlation_coefficients = as.data.frame(correlation_results$r) %>%
-  rownames_to_column("var_y") %>%
-  pivot_longer(-var_y, names_to = "var_x", values_to = "r")
-  
-correlation_p_values = as.data.frame(correlation_results$p) %>%
-  rownames_to_column("var_y") %>%
-  pivot_longer(-var_y, names_to = "var_x", values_to = "p")
-
-correlation_labels = correlation_coefficients %>%
-  left_join(correlation_p_values, by = c("var_x", "var_y")) %>%
-  mutate(label = paste0("r = ", round(r, 3),
-                        "/n",
-                        "p = ", signif(p, 3)))
-
-temp_time_binned %>%
-  ggplot() +
-  geom_autopoint(aes(x = .panel_x, y = .panel_y, colour = time_bin)) +
-  geom_autodensity(aes(x = .panel_x), fill = "dodgerblue2", alpha = 0.5) +
-  geom_smooth(aes(x = .panel_x, y = .panel_y), method = "lm") +
-  facet_matrix(vars("St. John's International Airport", "Baccalieu Island", "Gull Island", "Great Island"), layer.diag = 2, layer.upper = 3)
-```
-
-
 
 # Weather Data for Building Models
 
 ```{r}
+#| label: cleaned_airport_weather_data
+
 cleaned_airport_weather_data = airport_weather_data %>%
+  mutate(datetime = as_datetime(Date.Time..LST., format = "%Y-%m-%d %H:%M"),
+         datetime = force_tz(datetime, tzone = "America/St_Johns"),
+         datetime = round_date(datetime, "hour")) %>%
   select(datetime,Weather, Visibility..km., Temp...C., Stn.Press..kPa., Rel.Hum...., Hmdx, Dew.Point.Temp...C., Wind.Spd..km.h., Wind.Dir..10s.deg., Wind.Chill) %>%
   rename(
     weather = Weather,
@@ -440,34 +372,459 @@ cleaned_airport_weather_data = airport_weather_data %>%
   mutate(weather = tolower(weather))
 ```
 
-```{r}
-fog_present = cleaned_airport_weather_data %>%
-  mutate(fog = str_detect(weather, "fog"))
-```
+## Fog Presence Data
+
+As per the government of Canada's website of frequently asked questions about the historical weather data [which can be found here](https://climate.weather.gc.ca/FAQ_e.html?open=Q5) the missing data in the weather column is when there wasn't anything to report, thus the observations in which there are missing values can be treated as `FALSE` for the logical column of if fog was present.
 
 ```{r}
-baccalieu_temp_prediction = lm(`Baccalieu Island` ~ `St. John's International Airport`, temp_time_binned)
+#| label: fog_presence_data
 
-summary(baccalieu_temp_prediction)
-
-plot(baccalieu_temp_prediction)
+fog_data = cleaned_airport_weather_data %>%
+  arrange(datetime) %>%
+  filter(datetime >= "2025-06-10" & datetime <= "2025-10-28") %>%
+  mutate(
+    fog = str_detect(weather, "fog"),
+    fog = replace_na(fog, FALSE),
+    dew_point_depression = temperature - dew_point,
+    barometric_pressure_12_hour_lag = lag(barometric_pressure, 12),
+    barometric_pressure_12_hour_trend = barometric_pressure - barometric_pressure_12_hour_lag,
+    date = as_date(datetime),
+    fog_next_3h = lead(fog, 3)
+  ) %>%
+  left_join(suntimes, by = "date") %>%
+  filter(datetime >= sunset | datetime <= sunrise)
 ```
+
+# Linear Models for Island Temperature
+
+## Baccalieu Island Temperature As Predicted by St. John's International Airport
 
 ```{r}
-gull_temp_prediction = lm(`Gull Island` ~ `St. John's International Airport`, temp_time_binned)
+#| label: baccalieu_island_airport_temperature_model
 
-summary(gull_temp_prediction)
+baccalieu_temperature_model = lm(
+  `Baccalieu Island` ~ `St. John's International Airport`,
+  data = daily_temperature
+)
 
-plot(gull_temp_prediction)
+summary(baccalieu_temperature_model)
+
+par(mfrow = c(2, 2))
+plot(baccalieu_temperature_model)
+par(mfrow = c(1, 1))
 ```
+
+## Gull Island Temperature As Predicted by St. John's International Airport
 
 ```{r}
-great_temp_prediction = lm(`Great Island` ~ `St. John's International Airport`, temp_time_binned)
+#| label: gull_island_airport_temperature_model
 
-summary(great_temp_prediction)
+gull_temperature_model = lm(
+  `Gull Island` ~ `St. John's International Airport`,
+  data = daily_temperature
+)
 
-plot(great_temp_prediction)
+summary(gull_temperature_model)
+
+par(mfrow = c(2, 2))
+plot(gull_temperature_model)
+par(mfrow = c(1, 1))
 ```
+
+## Great Island Temperature as Predicted by St. John's International Airport
+
+```{r}
+#| label: great_island_airport_temperature_model
+
+great_temperature_model = lm(
+  `Great Island` ~ `St. John's International Airport`,
+  data = daily_temperature
+)
+
+summary(great_temperature_model)
+
+par(mfrow = c(2, 2))
+plot(great_temperature_model)
+par(mfrow = c(1, 1))
+```
+
+# Linear Models for Island Pressure
+
+## Baccalieu Island Pressure As Predicted by St. John's International Airport
+
+```{r}
+#| label: baccalieu_island_airport_pressure_model
+
+baccalieu_pressure_model = lm(
+  `Baccalieu Island` ~ `St. John's International Airport`,
+  data = daily_pressure
+)
+
+summary(baccalieu_pressure_model)
+
+par(mfrow = c(2, 2))
+plot(baccalieu_pressure_model)
+par(mfrow = c(1, 1))
+```
+
+## Gull Island Pressure As Predicted by St. John's International Airport
+
+```{r}
+#| label: gull_island_airport_pressure_model
+
+gull_pressure_model = lm(
+  `Gull Island` ~ `St. John's International Airport`,
+  data = daily_pressure
+)
+
+summary(gull_pressure_model)
+
+par(mfrow = c(2, 2))
+plot(gull_pressure_model)
+par(mfrow = c(1, 1))
+```
+
+## Great Island Pressure as Predicted by St. John's International Airport
+
+```{r}
+#| label: great_island_airport_pressure_model
+
+great_pressure_model = lm(
+  `Great Island` ~ `St. John's International Airport`,
+  data = daily_pressure
+)
+
+summary(great_pressure_model)
+
+par(mfrow = c(2, 2))
+plot(great_pressure_model)
+par(mfrow = c(1, 1))
+```
+
+# Linear Models for Island Wind Speed
+
+## Baccalieu Island Wind Speed As Predicted by St. John's International Airport
+
+```{r}
+#| label: baccalieu_island_airport_wind_speed_model
+
+baccalieu_wind_model = lm(
+  `Baccalieu Island` ~ `St. John's International Airport`,
+  data = daily_wind
+)
+
+summary(baccalieu_wind_model)
+
+par(mfrow = c(2, 2))
+plot(baccalieu_wind_model)
+par(mfrow = c(1, 1))
+```
+
+## Great Island Wind Speed as Predicted by St. John's International Airport
+
+```{r}
+#| label: great_island_airport_wind_speed_model
+
+great_wind_model = lm(
+  `Great Island` ~ `St. John's International Airport`,
+  data = daily_wind
+)
+
+summary(great_wind_model)
+
+par(mfrow = c(2, 2))
+plot(great_wind_model)
+par(mfrow = c(1, 1))
+```
+
+# Linear Models for Island Humidity
+
+## Baccalieu Island Humidity As Predicted by St. John's International Airport
+
+```{r}
+#| label: baccalieu_island_airport_humidity_model
+
+baccalieu_humidity_model = lm(
+  `Baccalieu Island` ~ `St. John's International Airport`,
+  data = daily_humidity
+)
+
+summary(baccalieu_humidity_model)
+
+par(mfrow = c(2, 2))
+plot(baccalieu_humidity_model)
+par(mfrow = c(1, 1))
+```
+
+## Gull Island Humidity As Predicted by St. John's International Airport
+
+```{r}
+#| label: gull_island_airport_humidity_model
+
+gull_humidity_model = lm(
+  `Gull Island` ~ `St. John's International Airport`,
+  data = daily_humidity
+)
+
+summary(gull_humidity_model)
+
+par(mfrow = c(2, 2))
+plot(gull_humidity_model)
+par(mfrow = c(1, 1))
+```
+
+## Great Island Humidity as Predicted by St. John's International Airport
+
+```{r}
+#| label: great_island_airport_humidity_model
+
+great_humidity_model = lm(
+  `Great Island` ~ `St. John's International Airport`,
+  data = daily_humidity
+)
+
+summary(great_humidity_model)
+
+par(mfrow = c(2, 2))
+plot(great_humidity_model)
+par(mfrow = c(1, 1))
+```
+
+# Linear Models for Island Dew Point
+
+## Baccalieu Island Dew Point As Predicted by St. John's International Airport
+
+```{r}
+#| label: baccalieu_island_airport_dew_point_model
+
+baccalieu_dew_point_model = lm(
+  `Baccalieu Island` ~ `St. John's International Airport`,
+  data = daily_dew_point
+)
+
+summary(baccalieu_dew_point_model)
+
+par(mfrow = c(2, 2))
+plot(baccalieu_dew_point_model)
+par(mfrow = c(1, 1))
+```
+
+## Gull Island Dew Point As Predicted by St. John's International Airport
+
+```{r}
+#| label: gull_island_airport_dew_point_model
+
+gull_dew_point_model = lm(
+  `Gull Island` ~ `St. John's International Airport`,
+  data = daily_dew_point
+)
+
+summary(gull_dew_point_model)
+
+par(mfrow = c(2, 2))
+plot(gull_dew_point_model)
+par(mfrow = c(1, 1))
+```
+
+## Great Island Dew Point as Predicted by St. John's International Airport
+
+```{r}
+#| label: great_island_airport_dew_point_model
+
+great_dew_point_model = lm(
+  `Great Island` ~ `St. John's International Airport`,
+  data = daily_dew_point
+)
+
+summary(great_dew_point_model)
+
+par(mfrow = c(2, 2))
+plot(great_dew_point_model)
+par(mfrow = c(1, 1))
+```
+
+# Fog Prediction Models
+
+## Binomial Distribution Model
+
+```{r}
+#| label: binomial_distribution_model
+
+binomial_fog_model = glm(
+  fog ~ dew_point_depression +
+    relative_humidity +
+    visibility +
+    barometric_pressure_12_hour_trend +
+    wind_speed,
+  family = binomial,
+  data = fog_data
+)
+
+summary(binomial_fog_model)
+
+par(mfrow = c(2, 2))
+plot(binomial_fog_model)
+par(mfrow = c(1, 1))
+```
+
+# Evaluation of St. John's International Airport Data For Island Approximation
+
+## Evaluation Function
+
+```{r}
+#| label: evaluation_function
+
+evaluate_airport_prediction = function(data, island_name) {
+  model_data = data %>%
+    select(
+      date,
+      island_value = all_of(island_name),
+      airport_value = `St. John's International Airport`
+    ) %>%
+    drop_na()
+  
+  model = lm(island_value ~ airport_value, data = model_data)
+  
+  tibble(
+    island = island_name,
+    n_days = nrow(model_data),
+    r = cor(model_data$island_value, model_data$airport_value),
+    r_squared = summary(model)$r.squared,
+    rmse = sqrt(mean(resid(model)^2)),
+    mae = mean(abs(resid(model))),
+    bias_airport_minus_island = mean(model_data$airport_value - model_data$island_value),
+    intercept = coef(model)[1],
+    slope = coef(model)[2]
+  )
+}
+```
+
+## Function to Plot Airport Against Island Data
+
+```{r}
+#| label: airport_island_plot_function
+
+plot_airport_prediction = function(data, island_name, y_label) {
+  data %>%
+    select(
+      date,
+      island_value = all_of(island_name),
+      airport_value = "St. John's International Airport",
+    ) %>%
+    drop_na() %>%
+    ggplot(aes(x = airport_value, y = island_value)) +
+    geom_point(aes(colour = date), alpha = .7) +
+    geom_smooth(method = "lm", se = TRUE) +
+    labs(
+      x = "St. John's International Airport",
+      y = y_label,
+      color = "Date"
+    )
+}
+```
+
+## Creation of Evaluation Data Frames
+
+### Temperature
+
+```{r}
+#| label: temperature_model_evaluation
+
+temperature_prediction_results = bind_rows(
+  evaluate_airport_prediction(daily_temperature, "Baccalieu Island"),
+  evaluate_airport_prediction(daily_temperature, "Gull Island"),
+  evaluate_airport_prediction(daily_temperature, "Great Island")
+)
+```
+
+### Pressure
+
+```{r}
+#| label: pressure_model_evaluation
+
+pressure_prediction_results = bind_rows(
+  evaluate_airport_prediction(daily_pressure, "Baccalieu Island"),
+  evaluate_airport_prediction(daily_pressure, "Gull Island"),
+  evaluate_airport_prediction(daily_pressure, "Great Island")
+)
+```
+
+### Wind
+
+```{r}
+#| label: wind_model_evaluation
+
+wind_prediction_results = bind_rows(
+  evaluate_airport_prediction(daily_wind, "Baccalieu Island"),
+  evaluate_airport_prediction(daily_wind, "Great Island")
+)
+```
+
+### Humidity
+
+```{r}
+#| label: humidity_model_evaluation
+
+humidity_prediction_results = bind_rows(
+  evaluate_airport_prediction(daily_humidity, "Baccalieu Island"),
+  evaluate_airport_prediction(daily_humidity, "Gull Island"),
+  evaluate_airport_prediction(daily_humidity, "Great Island")
+)
+```
+
+### Dew Point
+
+```{r}
+#| label: dew_point_model_evaluation
+
+dew_point_prediction_results = bind_rows(
+  evaluate_airport_prediction(daily_dew_point, "Baccalieu Island"),
+  evaluate_airport_prediction(daily_dew_point, "Gull Island"),
+  evaluate_airport_prediction(daily_dew_point, "Great Island")
+)
+```
+
+## Combination of Evaluation Data Frames
+
+```{r}
+airport_prediction_results = bind_rows(
+  temperature_prediction_results %>%
+    mutate(variable = "temperature"),
+  pressure_prediction_results %>%
+    mutate(variable = "barometric_pressure"),
+  wind_prediction_results %>%
+    mutate(variable = "wind_speed"),
+  humidity_prediction_results %>%
+    mutate(variable = "humidity"),
+  dew_point_prediction_results %>%
+    mutate(variable = "dew_point")
+) %>%
+  relocate(c(variable, n_days, slope, intercept), .after = island)
+```
+
+# Prediction of Fog on Islands From Light Data
+
+```{r}
+nightly_light = light_data %>%
+  left_join(suntimes, by = c("date")) %>%
+  select(-c(lat, lon, voltage, temp)) %>%
+  filter(sunelev_deg <= -12) %>%
+  group_by(site, nightdate) %>%
+  summarise(
+    mean_light_msas = mean(light_reading_MSAS, na.rm = TRUE),
+    sd_light_msas = sd(light_reading_MSAS, na.rm = TRUE),
+    median_light_msas = median(light_reading_MSAS, na.rm = TRUE),
+    min_light_msas = min(light_reading_MSAS, na.rm = TRUE),
+    max_light_msas = max(light_reading_MSAS, na.rm = TRUE),
+    mean_moon_elevation = mean(moonelev_deg, na.rm = TRUE),
+    mean_moon_illumination = mean(moonillumination, na.rm = TRUE),
+    n_light_records = n(),
+    .groups = "drop"
+  )
+```
+
+
+
 
 
 
