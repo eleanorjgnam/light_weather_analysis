@@ -6,8 +6,6 @@ format:
     toc: true
     toc-depth: 3
     number-sections: true
-    code-fold: true
-    code-tools: true
 editor: source
 ---
 ```{r}
@@ -372,29 +370,6 @@ cleaned_airport_weather_data = airport_weather_data %>%
   mutate(weather = tolower(weather))
 ```
 
-## Fog Presence Data
-
-As per the government of Canada's website of frequently asked questions about the historical weather data [which can be found here](https://climate.weather.gc.ca/FAQ_e.html?open=Q5) the missing data in the weather column is when there wasn't anything to report, thus the observations in which there are missing values can be treated as `FALSE` for the logical column of if fog was present.
-
-```{r}
-#| label: fog_presence_data
-
-fog_data = cleaned_airport_weather_data %>%
-  arrange(datetime) %>%
-  filter(datetime >= "2025-06-10" & datetime <= "2025-10-28") %>%
-  mutate(
-    fog = str_detect(weather, "fog"),
-    fog = replace_na(fog, FALSE),
-    dew_point_depression = temperature - dew_point,
-    barometric_pressure_12_hour_lag = lag(barometric_pressure, 12),
-    barometric_pressure_12_hour_trend = barometric_pressure - barometric_pressure_12_hour_lag,
-    date = as_date(datetime),
-    fog_next_3h = lead(fog, 3)
-  ) %>%
-  left_join(suntimes, by = "date") %>%
-  filter(datetime >= sunset | datetime <= sunrise)
-```
-
 # Linear Models for Island Temperature
 
 ## Baccalieu Island Temperature As Predicted by St. John's International Airport
@@ -645,6 +620,25 @@ par(mfrow = c(1, 1))
 
 # Fog Prediction Models
 
+## Fog Presence Data
+
+```{r}
+#| label: fog_presence_data_v1
+
+fog_data = cleaned_airport_weather_data %>%
+  arrange(datetime) %>%
+  filter(datetime >= "2025-06-10" & datetime <= "2025-10-28") %>%
+  mutate(fog = str_detect(weather, "fog"),
+         fog = replace_na(fog, FALSE),
+         dew_point_depression = temperature - dew_point,
+         barometric_pressure_12_hour_lag = lag(barometric_pressure, 12),
+         barometric_pressure_12_hour_trend = barometric_pressure - barometric_pressure_12_hour_lag,
+         date = as_date(datetime),
+         fog_next_3h = lead(fog, 3)) %>%
+  left_join(suntimes, by = "date") %>%
+  filter(datetime >= sunset | datetime <= sunrise)
+```
+
 ## Binomial Distribution Model
 
 ```{r}
@@ -787,6 +781,8 @@ dew_point_prediction_results = bind_rows(
 ## Combination of Evaluation Data Frames
 
 ```{r}
+#| label: master_evaluation_data_frame
+
 airport_prediction_results = bind_rows(
   temperature_prediction_results %>%
     mutate(variable = "temperature"),
@@ -804,7 +800,11 @@ airport_prediction_results = bind_rows(
 
 # Prediction of Fog on Islands From Light Data
 
+## Nightly Summaries for Island Light Data
+
 ```{r}
+#| label: nightly_island_light_summary
+
 nightly_light = light_data %>%
   left_join(suntimes, by = c("date")) %>%
   select(-c(lat, lon, voltage, temp)) %>%
@@ -823,9 +823,72 @@ nightly_light = light_data %>%
   )
 ```
 
+## Fog Presence Data
 
+As per the government of Canada's website of frequently asked questions about the historical weather data [which can be found here](https://climate.weather.gc.ca/FAQ_e.html?open=Q5) the missing data in the weather column is when there wasn't anything to report, thus the observations in which there are missing values can be treated as `FALSE` for the logical column of if fog was present.
 
+```{r}
+#| label: fog_presence_data
 
+nightly_airport_weather = cleaned_airport_weather_data %>%
+  arrange(datetime) %>%
+  filter(datetime >= "2025-06-10" & datetime <= "2025-10-28") %>%
+  mutate(nightdate = nightdater(datetime),
+         fog = str_detect(weather, "fog"),
+         fog = replace_na(fog, FALSE),
+         dew_point_depression = temperature - dew_point,
+         date = as_date(datetime)) %>%
+  left_join(suntimes, by = "date") %>%
+  filter(datetime >= sunset | datetime <= sunrise) %>%
+  group_by(nightdate) %>%
+  summarise(
+    fog_night = any(fog),
+    mean_temperature = mean(temperature, na.rm = TRUE),
+    mean_relative_humidity = mean(relative_humidity, na.rm = TRUE),
+    mean_visibility = mean(visibility, na.rm = TRUE),
+    min_visibility = min(visibility, na.rm = TRUE),
+    mean_dew_point_depression = mean(dew_point_depression, na.rm = TRUE),
+    min_dew_point_depression = min(dew_point_depression, na.rm = TRUE),
+    mean_wind_speed = mean(wind_speed, na.rm = TRUE),
+    mean_barometric_pressure = mean(barometric_pressure, na.rm = TRUE),
+    .groups = "drop"
+  )
+```
+
+## Fog Light Model Data
+
+```{r}
+#| label: fog_light_model_data
+
+fog_light_model_data = nightly_light %>%
+  left_join(nightly_airport_weather, by = "nightdate")
+```
+
+## Fog Light Model
+
+```{r}
+#| label: fog_light_model
+
+fog_light_model = glm(
+  fog_night ~ #mean_relative_humidity +
+    min_visibility +
+    #mean_dew_point_depression +
+    #mean_wind_speed +
+    #mean_barometric_pressure +
+    mean_light_msas +
+    mean_light_msas*min_visibility +
+    #mean_moon_illumination +
+    site,
+  family = "binomial",
+  data = fog_light_model_data
+)
+
+summary(fog_light_model)
+
+par(mfrow = c(2, 2))
+plot(fog_light_model)
+par(mfrow = c(1, 1))
+```
 
 
 
